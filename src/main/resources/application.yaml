@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: eco-knock-be-central
+
+server:
+  port: 9090
