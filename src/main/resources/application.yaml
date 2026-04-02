@@ -3,4 +3,8 @@ spring:
     name: eco-knock-be-central
 
 server:
-  port: 9090
+  port: 18080
+
+grpc:
+  server:
+    port: 6565

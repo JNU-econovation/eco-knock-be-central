@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package sensor.v1;
+
+option java_multiple_files = true;
+option java_package = "jnu.econovation.ecoknockbecentral.grpc.sensor.v1";
+
+message ReportSensorRequest {
+  int32 device_id = 1;
+  double temperature_c = 2;
+  double humidity_rh = 3;
+  double gas_resistance_ohm = 4;
+  int64 measured_at_unix_ms = 5;
+}
+
+message ReportSensorResponse {
+  bool accepted = 1;
+}
+
+service SensorService {
+  rpc ReportSensor(ReportSensorRequest) returns (ReportSensorResponse);
+}

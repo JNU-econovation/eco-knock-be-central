@@ -1,12 +1,18 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id 'java'
-    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
-    id 'org.jetbrains.kotlin.plugin.spring' version '2.2.0'
-    id 'org.jetbrains.kotlin.plugin.jpa' version '2.2.0'
-    id 'org.jetbrains.kotlin.plugin.lombok' version '2.2.0'
-    id 'org.springframework.boot' version '4.0.5'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.spring'
+    id 'org.jetbrains.kotlin.plugin.jpa'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'com.google.protobuf'
 }
+
+
+def grpcVersion = '1.80.0'
+def protobufVersion = '4.34.1'
 
 group = 'jnu.econovation'
 version = '0.0.1-SNAPSHOT'
@@ -18,16 +24,92 @@ java {
     }
 }
 
+kotlin {
+    jvmToolchain(25)
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_25
+    }
+}
+
 repositories {
     mavenCentral()
 }
 
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    //grpc & proto
+    implementation platform("io.grpc:grpc-bom:${grpcVersion}")
+    implementation 'io.grpc:grpc-protobuf'
+    implementation 'io.grpc:grpc-stub'
+    implementation 'io.grpc:grpc-netty-shaded'
+    implementation 'io.grpc:grpc-services'
+    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    implementation "com.google.protobuf:protobuf-kotlin:${protobufVersion}"
+
+    //logging
+    implementation 'org.slf4j:slf4j-api:2.0.17'
+    implementation 'io.github.microutils:kotlin-logging:3.0.5'
+
+    //test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    //kotlin reflection
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+
+    //kotlin coroutine
+    implementation platform('org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.10.2')
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-reactor'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8'
+
+    //env
+    implementation 'me.paulschwarz:spring-dotenv:5.1.0'
+
+    //jackson
+    implementation 'com.fasterxml.jackson.module:jackson-module-jsonSchema'
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
+        }
+    }
+    generateProtoTasks {
+        all().configureEach {
+            builtins {
+                kotlin {}
+            }
+            plugins {
+                grpc {}
+            }
+        }
+    }
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+tasks.named('compileKotlin') {
+    dependsOn tasks.named('generateProto')
+}
+
+tasks.named('compileJava') {
+    dependsOn tasks.named('generateProto')
+}
+
+tasks.named('bootRun') {
+    dependsOn tasks.named('generateProto')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
 }

@@ -1,1 +1,17 @@
+pluginManagement {
+    def kotlinVersion = '2.3.20'
+    def springBootVersion = '4.0.5'
+    def dependencyManagementVersion = '1.1.7'
+    def protobufPluginVersion = '0.9.5'
+
+    plugins {
+        id 'org.jetbrains.kotlin.jvm' version kotlinVersion
+        id 'org.jetbrains.kotlin.plugin.spring' version kotlinVersion
+        id 'org.jetbrains.kotlin.plugin.jpa' version kotlinVersion
+        id 'org.springframework.boot' version springBootVersion
+        id 'io.spring.dependency-management' version dependencyManagementVersion
+        id 'com.google.protobuf' version protobufPluginVersion
+    }
+}
+
 rootProject.name = 'eco-knock-be-central'
