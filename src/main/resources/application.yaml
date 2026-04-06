@@ -1,10 +1,15 @@
 spring:
   application:
     name: eco-knock-be-central
+  threads:
+    virtual:
+      enabled: true
 
 server:
-  port: 18080
+  port: 18081
 
-grpc:
-  server:
+embedded:
+  grpc:
+    host: localhost
     port: 6565
+    timeout: 3s

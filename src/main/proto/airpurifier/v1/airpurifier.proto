@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package airpurifier.v1;
+
+option java_multiple_files = true;
+option java_package = "jnu.econovation.ecoknockbecentral.grpc.airpurifier.v1";
+
+import "google/protobuf/wrappers.proto";
+
+message GetCurrentAirPurifierRequest {}
+
+message GetCurrentAirPurifierResponse {
+  string power = 1;
+  bool is_on = 2;
+  int32 aqi = 3;
+  int32 average_aqi = 4;
+  int32 humidity = 5;
+  google.protobuf.DoubleValue temperature_c = 6;
+  string mode = 7;
+  int32 favorite_level = 8;
+  int32 filter_life_remaining = 9;
+  int32 filter_hours_used = 10;
+  int32 motor_speed = 11;
+  int32 purify_volume = 12;
+  bool led = 13;
+  google.protobuf.Int32Value led_brightness = 14;
+  google.protobuf.BoolValue buzzer = 15;
+  bool child_lock = 16;
+}
+
+service AirPurifierService {
+  rpc GetCurrentAirPurifier(GetCurrentAirPurifierRequest) returns (GetCurrentAirPurifierResponse);
+}
