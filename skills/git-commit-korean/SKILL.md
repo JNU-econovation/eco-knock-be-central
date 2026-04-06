@@ -1,6 +1,6 @@
 ---
 name: git-commit-korean
-description: Inspect this repository's git history and current diff, then draft or create git commits that match the local convention. Use when the user asks to write a commit message, make a git commit, summarize changes into a commit, keep commit messages in Korean, or split changes into small logical commits aligned with recent repository history.
+description: Inspect this repository's git history and current diff, then draft or create git commits that match the local convention. Use when the user asks to write a commit message, make a git commit, summarize changes into a commit, keep commit messages in Korean, or split changes into very small logical commits aligned with recent repository history.
 ---
 
 # Git Commit Korean
@@ -20,16 +20,18 @@ Use `git diff --staged` as the source of truth when files are already staged. If
 
 ## Split Commits Aggressively
 
-Prefer small commits.
+Default to the smallest coherent commit units you can make.
 
 Apply these rules before staging:
 
 - Split unrelated changes into separate commits.
-- Split large refactors from behavior changes when practical.
-- Split tests from production changes only when the test commit still makes sense on its own.
-- If one file contains multiple unrelated edits, stage partial hunks when that keeps each commit coherent.
+- Split large refactors from behavior changes whenever practical.
+- Split tests from production changes when the test commit still passes or clearly belongs to one logical change.
+- Split config, proto, wiring, domain logic, tests, docs, and cleanup into separate commits when they can stand on their own.
+- If one file contains multiple unrelated edits, stage partial hunks to keep each commit narrow.
+- If you are unsure whether to split, split.
 
-If the current diff mixes multiple concerns, propose or create multiple Korean commits instead of one broad commit.
+Avoid broad “do everything” commits. If the current diff mixes multiple concerns, propose or create multiple Korean commits instead of one broad commit.
 
 ## Commit Style
 
@@ -54,10 +56,10 @@ Good pattern examples:
 When the user asked to actually commit:
 
 1. Check which files should be included.
-2. Decide whether the diff should be split into multiple small commits.
+2. Decide the smallest sensible commit boundaries first.
 3. Stage only the intended files or hunks for the current logical unit.
 4. Create the commit with the final Korean message.
-5. Repeat for remaining logical units when needed.
+5. Repeat for every remaining logical unit until no mixed changes remain.
 6. Report the resulting commit hash and subject for each commit.
 
 Do not amend, rebase, squash, or rewrite history unless the user explicitly asked.

@@ -1,7 +1,7 @@
 interface:
   display_name: "Git Commit Korean"
-  short_description: "이 저장소의 커밋 히스토리에 맞춰 한국어 커밋 메시지를 작성하거나 커밋한다."
-  default_prompt: "Use $git-commit-korean to inspect the diff, write a Korean commit message that matches this repository, and create the commit."
+  short_description: "작고 논리적인 한국어 커밋 단위로 나눠 커밋합니다."
+  default_prompt: "Use $git-commit-korean to inspect the diff, split it into the smallest logical commits, and create Korean commit messages that match this repository."
 
 policy:
   allow_implicit_invocation: true
