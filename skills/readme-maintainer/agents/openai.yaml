@@ -1,0 +1,4 @@
+interface:
+  display_name: "README Maintainer"
+  short_description: "Keep this repository README aligned with the current implemented scope."
+  default_prompt: "Use $readme-maintainer to update this repository README based on the current implemented features and configuration."

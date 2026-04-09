@@ -3,14 +3,7 @@ package jnu.econovation.ecoknockbecentral.grpc.runner
 import jakarta.annotation.PreDestroy
 import jnu.econovation.ecoknockbecentral.grpc.client.airpurifier.AirPurifierGrpcClient
 import jnu.econovation.ecoknockbecentral.grpc.client.sensor.SensorGrpcClient
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.time.delay
 import mu.KLogging
 import org.springframework.boot.context.event.ApplicationReadyEvent
@@ -36,6 +29,8 @@ class EmbeddedGrpcStartupLogger(
         private val POLLING_DELAY = Duration.ofSeconds(1)
     }
 
+    private var errorDelay = Duration.ofSeconds(30)
+
     @EventListener(ApplicationReadyEvent::class)
     fun logCurrentDeviceStatus() {
         loggingJob = loggerScope.launch {
@@ -51,18 +46,34 @@ class EmbeddedGrpcStartupLogger(
 
     private suspend fun pollAndLog() = supervisorScope {
         while (true) {
+            var failed = false;
+
             val sensorDeferred = async { runCatching { sensorGrpcClient.getCurrentSensor() } }
-            val airPurifierDeferred = async { runCatching { airPurifierGrpcClient.getCurrentAirPurifier() } }
+            val airPurifierDeferred = async {
+                runCatching { airPurifierGrpcClient.getCurrentAirPurifier() }
+            }
 
             sensorDeferred.await()
                 .onSuccess { logger.info { "센서 -> $it" } }
-                .onFailure { logger.error(it) { "센서 gRPC 조회 실패" } }
+                .onFailure {
+                    logger.error(it) { "센서 gRPC 조회 실패" }
+                    failed = true
+                }
 
             airPurifierDeferred.await()
                 .onSuccess { logger.info { "공기 청정기 -> $it" } }
-                .onFailure { logger.error(it) { "공기청정기 gRPC 조회 실패" } }
+                .onFailure {
+                    logger.error(it) { "공기청정기 gRPC 조회 실패" }
+                    failed = true
+                }
 
-            delay(POLLING_DELAY)
+            if (failed) {
+                logger.warn { "gRPC 에러로 인해 polling ${errorDelay.toSeconds()}초 딜레이" }
+                delay(errorDelay)
+                errorDelay = errorDelay.multipliedBy(2)
+            } else {
+                delay(POLLING_DELAY)
+            }
         }
     }
 }
