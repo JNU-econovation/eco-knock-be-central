@@ -6,6 +6,7 @@ Below is the list of repository-local skills that can be used in this project.
 
 ### Available skills
 - `git-commit-korean`: Inspect this repository's git history and current diff, then draft or create git commits that match the local convention. Use when the user asks to write a commit message, make a git commit, summarize changes into a commit, keep commit messages in Korean, or split changes into small logical commits aligned with recent repository history. (file: `./skills/git-commit-korean/SKILL.md`)
+- `readme-maintainer`: Update this repository's README so it matches the current implemented scope. Use when the user asks to create, rewrite, or refresh README content, document new features, update setup or deployment instructions, or keep the README in sync with current code, configuration, Docker deployment, Raspberry Pi behavior, or project limitations. (file: `./skills/readme-maintainer/SKILL.md`)
 
 ## How to use skills
 - Discovery: The list above is the repository-local skill registry for this project.
