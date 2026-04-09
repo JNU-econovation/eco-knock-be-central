@@ -1,6 +1,15 @@
 spring:
   application:
     name: eco-knock-be-central
+  datasource:
+    url: jdbc:postgresql://${DEV_POSTGRES_HOST:localhost}:${DEV_POSTGRES_PORT:5432}/ecoknock
+    username: ${DEV_POSTGRES_USERNAME:postgres}
+    password: ${DEV_POSTGRES_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties.hibernate.format_sql: true
+    defer-datasource-initialization: true
+    hibernate.ddl-auto: create
   threads:
     virtual:
       enabled: true
@@ -13,3 +22,16 @@ embedded:
     host: localhost
     port: 6565
     timeout: 3s
+
+security:
+  jwt:
+    secret-key: ${JWT_SECRET_KEY}
+  aes256:
+    key: ${AES256_KEY}
+  uri:
+    allowed-front-end-origins:
+      - http://localhost:*
+      - https://localhost:*
+    oauth2:
+      success-path: /auth/success
+      default-redirect-origin: http://localhost:5173

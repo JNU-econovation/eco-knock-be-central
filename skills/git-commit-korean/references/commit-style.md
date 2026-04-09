@@ -29,6 +29,12 @@
 - `:recycle: refactor: 센서 스트리밍 서비스 이름과 책임 정리`
 - `:white_check_mark: test: 윈도우용 fake sensor stub 테스트 보강`
 - `:fire: remove: 사용하지 않는 센서 서비스 필드 제거`
+- `:heavy_plus_sign: build: OAuth2 클라이언트 의존성을 추가`
+- `:arrow_up: build: Spring Boot 버전을 4.0.6으로 올림`
+- `:arrow_down: build: protobuf 플러그인 버전을 0.9.4로 내림`
+- `:hammer: build: Gradle toolchain 설정을 정리`
+- `:rocket: deploy: 운영 배포 환경 변수를 분리`
+- `:truck: rename: oauth 패키지를 oauth2로 이동`
 
 ## Type Heuristics
 
@@ -36,6 +42,30 @@
 - `refactor`: 동작은 유지하면서 구조만 개선
 - `test`: 테스트 추가 또는 테스트 코드 정리
 - `remove`: 기능, 파일, 코드 경로 제거
+- `build`: 의존성 추가, 버전 업다운, 빌드 스크립트, toolchain, 패키지 매니저 설정 변경
+- `deploy`: 배포 파이프라인, 릴리스 설정, 서버 실행 환경, 인프라 배포 설정 변경
+- `rename`: 디렉토리 이동, 파일 이동, 클래스명 변경, 패키지명 변경처럼 주된 변화가 이름이나 위치 재정의인 경우
+
+권장 이모지 매핑:
+
+- `:sparkles: feat:`
+- `:recycle: refactor:`
+- `:white_check_mark: test:`
+- `:fire: remove:`
+- `:heavy_plus_sign: build:` for dependency add
+- `:arrow_up: build:` for dependency upgrade
+- `:arrow_down: build:` for dependency downgrade
+- `:hammer: build:` for other build-only changes
+- `:rocket: deploy:` for deploy changes
+- `:truck: rename:` for rename or move changes
+
+판단 우선순위:
+
+- 의존성 추가/업다운이 핵심이면 `build`
+- 배포 설정이 핵심이면 `deploy`
+- 이동이나 이름 변경이 핵심이면 `rename`
+- 위 셋보다 새 동작 추가가 핵심이면 `feat`
+- 동작 유지 구조개선이면 `refactor`
 
 히스토리에 없는 타입이 꼭 필요하면 쓸 수 있지만, 가능하면 기존 타입 집합을 우선한다.
 
