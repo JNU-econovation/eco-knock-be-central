@@ -22,14 +22,14 @@ public class JwtAuthHelper {
         this.memberService = memberService;
     }
 
-    public Authentication authenticate(String authHeader) throws UnauthorizedException {
+    public Authentication authenticate(String authHeader) {
         return authenticate(authHeader, true);
     }
 
     public Authentication authenticate(
             String authHeader,
             boolean isBearer
-    ) throws UnauthorizedException {
+    ) {
         if (authHeader == null) {
             throw new UnauthorizedException();
         }

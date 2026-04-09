@@ -5,9 +5,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jnu.econovation.ecoknockbecentral.common.dto.response.CommonResponse;
 import jnu.econovation.ecoknockbecentral.common.exception.constants.ErrorCode;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -15,11 +15,10 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 @Component
+@Slf4j
+@RequiredArgsConstructor
 public class Rest500Handler implements AuthenticationEntryPoint {
-
-    private static final Logger logger = LoggerFactory.getLogger(Rest500Handler.class);
-
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
 
     @Override
     public void commence(
@@ -27,7 +26,7 @@ public class Rest500Handler implements AuthenticationEntryPoint {
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException {
-        logger.error(authException.getMessage(), authException.getCause());
+        log.error(authException.getMessage(), authException.getCause());
 
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         response.setContentType("application/json");

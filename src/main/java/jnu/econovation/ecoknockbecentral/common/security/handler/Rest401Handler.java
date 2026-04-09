@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jnu.econovation.ecoknockbecentral.common.dto.response.CommonResponse;
 import jnu.econovation.ecoknockbecentral.common.exception.constants.ErrorCode;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -16,8 +17,9 @@ import static jnu.econovation.ecoknockbecentral.common.security.constant.Securit
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class Rest401Handler implements AuthenticationEntryPoint {
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
 
     @Override
     public void commence(
