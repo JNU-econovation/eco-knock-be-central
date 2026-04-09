@@ -33,7 +33,7 @@ public class JwtUtil {
         try {
             String subject = jwtParser.parseSignedClaims(token).getPayload().getSubject();
             return subject != null ? Long.parseLong(subject) : null;
-        } catch (Exception e) {
+        } catch (JwtException | NumberFormatException e) {
             return null;
         }
     }
@@ -57,18 +57,9 @@ public class JwtUtil {
 
         try {
             jwtParser.parseSignedClaims(token);
-            return !isTokenExpired(token);
+            return true;
         } catch (JwtException e) {
             return false;
         }
-    }
-
-    private boolean isTokenExpired(String token) {
-        Date expiration = jwtParser
-                .parseSignedClaims(token)
-                .getPayload()
-                .getExpiration();
-
-        return expiration.before(new Date());
     }
 }

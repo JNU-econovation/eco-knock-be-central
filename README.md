@@ -136,8 +136,8 @@ Windows PowerShell:
 
 생성 대상 proto:
 
-- [`sensor.proto`](/C:/Users/we661/IdeaProjects/eco-knock-be-central/src/main/proto/sensor/v1/sensor.proto)
-- [`airpurifier.proto`](/C:/Users/we661/IdeaProjects/eco-knock-be-central/src/main/proto/airpurifier/v1/airpurifier.proto)
+- [`sensor.proto`](./src/main/proto/sensor/v1/sensor.proto)
+- [`airpurifier.proto`](./src/main/proto/airpurifier/v1/airpurifier.proto)
 
 ## 보안 동작
 

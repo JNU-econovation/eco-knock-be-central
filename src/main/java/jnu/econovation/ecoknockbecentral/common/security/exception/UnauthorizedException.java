@@ -1,7 +1,7 @@
 package jnu.econovation.ecoknockbecentral.common.security.exception;
 
-import javax.naming.AuthenticationException;
 import jnu.econovation.ecoknockbecentral.common.exception.constants.ErrorCode;
+import org.springframework.security.core.AuthenticationException;
 
 public class UnauthorizedException extends AuthenticationException {
 
