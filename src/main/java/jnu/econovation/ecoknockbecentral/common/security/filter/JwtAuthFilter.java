@@ -7,12 +7,16 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
-import java.util.Set;
+
+import jnu.econovation.ecoknockbecentral.common.security.constant.AuthPolicy;
 import jnu.econovation.ecoknockbecentral.common.security.handler.Rest401Handler;
 import jnu.econovation.ecoknockbecentral.common.security.handler.Rest500Handler;
 import jnu.econovation.ecoknockbecentral.common.security.helper.JwtAuthHelper;
-import org.springframework.http.HttpMethod;
+import jnu.econovation.ecoknockbecentral.common.security.resolver.AuthPolicyResolver;
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.Authentication;
@@ -20,87 +24,47 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
+@RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
-
-    private static final Set<String> WHITELIST = Set.of(
-            "/auth/success",
-            "/error",
-            "/favicon.ico",
-            "/oauth2/authorization/**",
-            "/login/**"
-    );
-
-    private static final Set<String> BLACKLIST = Set.of(
-
-    );
-
-    private static final Set<String> GREYLIST = Set.of(
-    );
-
-    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
-
+    private final AuthPolicyResolver policyResolver;
     private final JwtAuthHelper helper;
     private final Rest401Handler rest401Handler;
     private final Rest500Handler rest500Handler;
 
-    public JwtAuthFilter(
-            JwtAuthHelper helper,
-            Rest401Handler rest401Handler,
-            Rest500Handler rest500Handler
-    ) {
-        this.helper = helper;
-        this.rest401Handler = rest401Handler;
-        this.rest500Handler = rest500Handler;
-    }
-
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-
-        boolean isWhitelisted = WHITELIST.stream()
-                .anyMatch(pattern -> PATH_MATCHER.match(pattern, path));
-        boolean isBlacklisted = BLACKLIST.stream()
-                .anyMatch(pattern -> PATH_MATCHER.match(pattern, path));
-
-        return isWhitelisted && !isBlacklisted;
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        return policyResolver.resolve(request) == AuthPolicy.SKIP;
     }
 
     @Override
     protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-
-        boolean isGreyList = GREYLIST.stream()
-                .anyMatch(pattern -> PATH_MATCHER.match(pattern, request.getRequestURI()));
-        boolean isBlackList = BLACKLIST.stream()
-                .anyMatch(pattern -> PATH_MATCHER.match(pattern, request.getRequestURI()));
-        boolean isGetMethod = HttpMethod.GET.matches(request.getMethod());
+        AuthPolicy policy = policyResolver.resolve(request);
 
         try {
             Authentication auth = helper.authenticate(request.getHeader(AUTHORIZATION_HEADER));
 
-            if (auth instanceof AbstractAuthenticationToken abstractAuthenticationToken) {
-                abstractAuthenticationToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+            if (auth instanceof AbstractAuthenticationToken token) {
+                token.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             }
 
             SecurityContextHolder.getContext().setAuthentication(auth);
             filterChain.doFilter(request, response);
 
-        } catch (Throwable exception) {
-            if (isGreyList && isGetMethod && !isBlackList) {
+        } catch (Throwable e) {
+            if (policy == AuthPolicy.OPTIONAL) {
                 SecurityContextHolder.clearContext();
                 filterChain.doFilter(request, response);
-            } else {
-                handleException(exception, request, response);
+                return;
             }
+
+            handleException(e, request, response);
         }
     }
 
@@ -108,7 +72,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             Throwable e,
             HttpServletRequest request,
             HttpServletResponse response
-    ) throws IOException, ServletException {
+    ) throws IOException {
         SecurityContextHolder.clearContext();
 
         if (e instanceof AuthenticationException authenticationException) {
