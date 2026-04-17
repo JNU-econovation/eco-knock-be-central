@@ -13,6 +13,7 @@
 - JWT 생성/검증 유틸과 인증 필터
 - 공통 에러 응답 모델
 - 센서/공기청정기 상태를 조회하는 gRPC 클라이언트
+- `sensor.v2` 응답의 자체 알고리즘 기반 센서 지표(`static_iaq`, `estimated_eco2_ppm`, `estimated_bvoc_ppm` 등) 수신
 - 앱 시작 후 gRPC 상태를 주기적으로 조회하는 로거
 - proto 기반 코드 생성 Gradle 설정
 
@@ -59,6 +60,7 @@ src/main/kotlin/jnu/econovation/ecoknockbecentral
 
 src/main/proto
 ├─ sensor/v1/sensor.proto
+├─ sensor/v2/sensor.proto
 └─ airpurifier/v1/airpurifier.proto
 ```
 
@@ -66,7 +68,7 @@ src/main/proto
 
 - JDK 25
 - PostgreSQL
-- `sensor.v1.SensorService`와 `airpurifier.v1.AirPurifierService`를 제공하는 gRPC 서버
+- `sensor.v2.SensorService`와 `airpurifier.v1.AirPurifierService`를 제공하는 gRPC 서버
 
 기본 설정 기준으로 다음 대상이 필요합니다.
 
@@ -137,6 +139,7 @@ Windows PowerShell:
 생성 대상 proto:
 
 - [`sensor.proto`](./src/main/proto/sensor/v1/sensor.proto)
+- [`sensor.v2.proto`](./src/main/proto/sensor/v2/sensor.proto)
 - [`airpurifier.proto`](./src/main/proto/airpurifier/v1/airpurifier.proto)
 
 ## 보안 동작
@@ -157,8 +160,18 @@ Windows PowerShell:
 
 현재 사용하는 RPC는 다음 두 개입니다.
 
-- `sensor.v1.SensorService/GetCurrentSensor`
+- `sensor.v2.SensorService/GetCurrentSensor`
 - `airpurifier.v1.AirPurifierService/GetCurrentAirPurifier`
+
+현재 센서 RPC 응답에는 기본 측정값 외에도 자체 알고리즘으로 계산한 다음 지표가 포함됩니다.
+
+- `static_iaq`
+- `estimated_eco2_ppm`
+- `estimated_bvoc_ppm`
+- `accuracy`
+- `stabilization_progress_pct`
+- `gas_percentage`
+- `learning_complete_at_unix_ms`
 
 ## 현재 상태 요약
 

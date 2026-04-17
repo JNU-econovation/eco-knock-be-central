@@ -13,15 +13,16 @@ public class CookieUtil {
     public static void addCookie(
             @NonNull HttpServletRequest request,
             HttpServletResponse response,
-            String key,
-            String value,
+            @NonNull String key,
+            @NonNull String value,
             int maxAge
     ) {
+
         ResponseCookie.ResponseCookieBuilder cookieBuilder = ResponseCookie
-                .from(key, value != null ? value : "")
+                .from(key, value)
                 .path("/")
                 .httpOnly(true)
-                .maxAge((long) maxAge)
+                .maxAge(maxAge)
                 .sameSite("Lax");
 
         if (request.isSecure()) {
