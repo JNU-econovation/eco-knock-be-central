@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package sensor.v2;
+
+option java_multiple_files = true;
+option java_package = "jnu.econovation.ecoknockbecentral.grpc.sensor.v2";
+
+message GetCurrentSensorRequest {}
+
+message GetCurrentSensorResponse {
+  double temperature_c = 1;
+  double humidity_rh = 2;
+  double gas_resistance_ohm = 3;
+  uint32 status = 4;
+  bool gas_valid = 5;
+  bool heat_stable = 6;
+  int64 measured_at_unix_ms = 7;
+  double static_iaq = 8;
+  double estimated_eco2_ppm = 9;
+  double estimated_bvoc_ppm = 10;
+  uint32 accuracy = 11;
+  uint32 stabilization_progress_pct = 12;
+  double gas_percentage = 13;
+  int64 learning_complete_at_unix_ms = 14;
+}
+
+service SensorService {
+  rpc GetCurrentSensor(GetCurrentSensorRequest) returns (GetCurrentSensorResponse);
+}
