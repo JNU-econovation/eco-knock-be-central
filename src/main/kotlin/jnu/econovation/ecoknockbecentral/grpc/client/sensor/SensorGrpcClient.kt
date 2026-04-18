@@ -1,9 +1,9 @@
 package jnu.econovation.ecoknockbecentral.grpc.client.sensor
 
+import jnu.econovation.ecoknockbecentral.airquality.dto.RawSensorDTO
 import jnu.econovation.ecoknockbecentral.grpc.config.EmbeddedGrpcConfig
 import jnu.econovation.ecoknockbecentral.grpc.sensor.v2.GetCurrentSensorRequest
 import jnu.econovation.ecoknockbecentral.grpc.sensor.v2.SensorServiceGrpc
-import jnu.econovation.ecoknockbecentral.sensor.dto.internal.CurrentSensorDTO
 import org.springframework.stereotype.Component
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -13,12 +13,12 @@ class SensorGrpcClient(
     private val config: EmbeddedGrpcConfig,
     private val stub: SensorServiceGrpc.SensorServiceBlockingV2Stub,
 ) {
-    suspend fun getCurrentSensor(): CurrentSensorDTO {
+    suspend fun getCurrentSensor(): RawSensorDTO {
         val response = stub
             .withDeadlineAfter(config.timeout.toMillis(), TimeUnit.MILLISECONDS)
             .getCurrentSensor(GetCurrentSensorRequest.getDefaultInstance())
 
-        return CurrentSensorDTO(
+        return RawSensorDTO(
             temperatureC = response.temperatureC,
             humidityRh = response.humidityRh,
             gasResistanceOhm = response.gasResistanceOhm,

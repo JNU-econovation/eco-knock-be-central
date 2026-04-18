@@ -26,6 +26,7 @@ message GetCurrentAirPurifierResponse {
   google.protobuf.Int32Value led_brightness = 14;
   google.protobuf.BoolValue buzzer = 15;
   bool child_lock = 16;
+  int64 measured_at_unix_ms = 17;
 }
 
 service AirPurifierService {
