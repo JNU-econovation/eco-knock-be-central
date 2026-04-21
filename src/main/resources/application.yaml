@@ -17,6 +17,18 @@ spring:
 server:
   port: 18081
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+    prometheus:
+      access: unrestricted
+
 embedded:
   grpc:
     host: localhost

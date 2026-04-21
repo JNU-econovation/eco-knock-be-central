@@ -70,6 +70,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/auth/success",
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/actuator/prometheus",
                                 "/error",
                                 "/favicon.ico"
                         ).permitAll()
