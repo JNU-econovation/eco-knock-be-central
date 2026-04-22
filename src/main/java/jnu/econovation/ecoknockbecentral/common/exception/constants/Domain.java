@@ -4,5 +4,6 @@ public enum Domain {
     COMMON,
     AUTH,
     SECURITY,
-    MEMBER
+    MEMBER,
+    AIR_QUALITY
 }
