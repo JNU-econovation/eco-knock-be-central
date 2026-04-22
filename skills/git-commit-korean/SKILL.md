@@ -58,7 +58,7 @@ Strong rules:
 
 ## Split Commits Aggressively
 
-Default to the smallest coherent commit units you can make.
+Default to extremely small coherent commit units. In this repository, prefer many tiny commits over a few broad commits when each tiny commit is independently explainable.
 
 Apply these rules before staging:
 
@@ -67,9 +67,22 @@ Apply these rules before staging:
 - Split tests from production changes when the test commit still passes or clearly belongs to one logical change.
 - Split config, proto, wiring, domain logic, tests, docs, and cleanup into separate commits when they can stand on their own.
 - If one file contains multiple unrelated edits, stage partial hunks to keep each commit narrow.
+- Treat a single independently meaningful line as a valid commit when it changes project behavior or build/runtime configuration.
+- Split dependency scope changes, runtime dependency additions, framework annotation wiring, and serialization-mode configuration into separate commits when possible.
 - If you are unsure whether to split, split.
 
 Avoid broad “do everything” commits. If the current diff mixes multiple concerns, propose or create multiple Korean commits instead of one broad commit.
+
+Preferred tiny commit examples:
+
+- Adding `@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)` can be one commit.
+- Changing `springboot4-dotenv` from `developmentOnly` to `implementation` can be one commit.
+- Adding `runtimeOnly 'org.flywaydb:flyway-database-postgresql'` can be one commit.
+- Adding one Flyway migration can be one commit.
+- Adding one request DTO validation rule and its domain exception can be one commit.
+- Updating tests for one response-shape change can be one commit.
+
+Do not combine these just because they are all in `build.gradle` or all support the same larger feature.
 
 ## Commit Style
 

@@ -71,9 +71,14 @@
 
 ## Commit Size
 
-이 skill은 큰 작업을 한 번에 커밋하지 않는다.
+이 skill은 큰 작업을 한 번에 커밋하지 않는다. 이 저장소에서는 매우 작은 커밋을 선호한다.
 
 - 기능 추가와 리팩터링이 섞여 있으면 나눈다.
 - 이동, 이름 변경, 포맷팅만 있는 변경은 별도 커밋으로 분리하는 편을 우선한다.
 - 테스트는 변경을 설명하는 데 붙어야 하지만, 독립적으로 의미가 있으면 별도 커밋도 가능하다.
 - 하나의 커밋 메시지로 설명하기 어려우면 이미 너무 큰 커밋으로 본다.
+- 한 줄 변경이어도 독립적으로 설명 가능하면 커밋 하나로 나눈다.
+- 같은 파일 안의 변경이어도 의존성 추가, 의존성 scope 변경, 프레임워크 설정, 직렬화 설정, 테스트 수정은 각각 분리한다.
+- `@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)` 추가처럼 프레임워크 동작을 바꾸는 설정은 단독 커밋 후보로 본다.
+- `implementation 'me.paulschwarz:springboot4-dotenv:5.1.0'`처럼 의존성 scope를 바꾸는 변경은 단독 커밋 후보로 본다.
+- `runtimeOnly 'org.flywaydb:flyway-database-postgresql'` 같은 런타임 의존성 추가도 단독 커밋 후보로 본다.

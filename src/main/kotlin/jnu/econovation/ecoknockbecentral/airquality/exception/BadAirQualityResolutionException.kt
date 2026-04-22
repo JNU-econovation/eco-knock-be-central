@@ -1,0 +1,6 @@
+package jnu.econovation.ecoknockbecentral.airquality.exception
+
+import jnu.econovation.ecoknockbecentral.common.exception.client.ClientException
+import jnu.econovation.ecoknockbecentral.common.exception.constants.ErrorCode
+
+class BadAirQualityResolutionException : ClientException(ErrorCode.BAD_AIR_QUALITY_RESOLUTION)

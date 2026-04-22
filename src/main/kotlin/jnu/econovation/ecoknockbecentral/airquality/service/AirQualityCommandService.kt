@@ -8,12 +8,10 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class AirQualityCoordinateService(
+@Transactional
+class AirQualityCommandService(
     private val repository: AirQualityRepository
 ) : SaveAirQualityUseCase {
-    // TODO: 분 단위/시간 단위 집계 조회 요구가 커지면 읽기 모델(집계 테이블 또는 materialized view) 분리 및 CQRS 검토
-
-    @Transactional
     override fun save(command: SaveAirQualityCommand) {
         val airQualityDTO = command.airQuality
         val rawSensorDTO = command.rawSensor

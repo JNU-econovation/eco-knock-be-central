@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eco Knock Maintainer"
+  short_description: "Eco Knock 프로젝트 코드 유지보수 규칙"
+  default_prompt: "Use $eco-knock-maintainer to modify eco-knock-be-central code in the project style."

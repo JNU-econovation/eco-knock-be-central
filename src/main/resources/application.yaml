@@ -8,8 +8,11 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     properties.hibernate.format_sql: true
-    defer-datasource-initialization: true
-    hibernate.ddl-auto: create
+    defer-datasource-initialization: false
+    hibernate.ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   threads:
     virtual:
       enabled: true

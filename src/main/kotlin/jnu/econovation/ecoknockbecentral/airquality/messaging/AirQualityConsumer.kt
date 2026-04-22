@@ -2,6 +2,7 @@ package jnu.econovation.ecoknockbecentral.airquality.messaging
 
 import jakarta.annotation.PreDestroy
 import jnu.econovation.ecoknockbecentral.airquality.queue.SaveAirQualityQueue
+import jnu.econovation.ecoknockbecentral.airquality.service.AirQualitySseService
 import jnu.econovation.ecoknockbecentral.airquality.usecase.SaveAirQualityUseCase
 import kotlinx.coroutines.*
 import mu.KotlinLogging
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service
 class AirQualityConsumer(
     private val queue: SaveAirQualityQueue,
     private val saveAirQualityUseCase: SaveAirQualityUseCase,
+    private val airQualitySseService: AirQualitySseService,
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -41,6 +43,7 @@ class AirQualityConsumer(
         queue.asFlow().collect { command ->
             runCatching {
                 saveAirQualityUseCase.save(command)
+                airQualitySseService.publish(command)
             }.onFailure { throwable ->
                 logger.error(throwable) { "air quality save 실패" }
             }

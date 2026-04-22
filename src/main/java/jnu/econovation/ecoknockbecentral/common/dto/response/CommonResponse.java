@@ -39,7 +39,7 @@ public class CommonResponse<T> {
         );
     }
 
-    public static CommonResponse<Void> ofFailure(String customMessage, ErrorCode errorCode) {
+    public static CommonResponse<Void> ofFailure(ErrorCode errorCode, String customMessage) {
         return new CommonResponse<>(
                 false,
                 customMessage,

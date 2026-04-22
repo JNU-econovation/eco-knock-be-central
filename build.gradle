@@ -43,6 +43,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
 
     //spring-security
     implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -55,6 +56,9 @@ dependencies {
 
     //PostgreSQL
     implementation 'org.postgresql:postgresql'
+
+    //PostgreSQL-flyway
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
 
     //grpc & proto
     implementation platform("io.grpc:grpc-bom:${grpcVersion}")
@@ -89,7 +93,7 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8'
 
     //env
-    developmentOnly 'me.paulschwarz:springboot4-dotenv:5.1.0'
+    implementation 'me.paulschwarz:springboot4-dotenv:5.1.0'
 
     //jackson
     implementation 'com.fasterxml.jackson.module:jackson-module-jsonSchema'
