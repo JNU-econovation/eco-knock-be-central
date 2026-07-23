@@ -401,7 +401,7 @@ sequenceDiagram
     Backend-->>Client: AI 답변
 ```
 
-`POST /ai/chat`은 `multipart/form-data`의 `question` 파트만 받습니다. 이전 대화는 오래된 순서로 최대 20쌍을 포함하며, AI 응답을 받은 뒤 채팅 이력을 저장합니다. 이력 저장에 실패해도 이미 받은 AI 답변은 반환합니다.
+`POST /ai/chat`은 JSON 본문 `{"question":"질문 내용"}`를 받습니다. 이전 대화는 오래된 순서로 최대 20쌍을 포함하며, AI 응답을 받은 뒤 채팅 이력을 저장합니다. 이력 저장에 실패해도 이미 받은 AI 답변은 반환합니다.
 
 회원이 삭제되면 `ai_chat_history.member_id` 외래 키의 PostgreSQL `ON DELETE CASCADE`에 따라 해당 회원의 AI 채팅 이력도 함께 삭제됩니다. 애플리케이션 엔티티에 `OneToMany` 컬렉션을 추가하지 않고 Flyway `V18` migration으로 DB에서 처리합니다.
 
