@@ -20,9 +20,31 @@ public interface GroupApplicationRepository extends JpaRepository<GroupApplicati
             GroupApplicationStatus status
     );
 
-    List<GroupApplication> findAllByGroupIdAndStatus(
-            Long groupId,
-            GroupApplicationStatus status
+    @Query("""
+            SELECT application
+            FROM GroupApplication application
+            JOIN FETCH application.applicant
+            WHERE application.group.id = :groupId
+              AND application.status = :status
+            ORDER BY application.createdAt ASC, application.id ASC
+            """)
+    List<GroupApplication> findAllByGroupIdAndStatusWithApplicant(
+            @Param("groupId") Long groupId,
+            @Param("status") GroupApplicationStatus status
+    );
+
+    @Query("""
+            SELECT application
+            FROM GroupApplication application
+            JOIN FETCH application.applicant
+            WHERE application.id = :applicationId
+              AND application.group.id = :groupId
+              AND application.status = :status
+            """)
+    Optional<GroupApplication> findByIdAndGroupIdAndStatusWithApplicant(
+            @Param("applicationId") Long applicationId,
+            @Param("groupId") Long groupId,
+            @Param("status") GroupApplicationStatus status
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -30,8 +52,10 @@ public interface GroupApplicationRepository extends JpaRepository<GroupApplicati
             SELECT application
             FROM GroupApplication application
             WHERE application.id = :applicationId
+              AND application.group.id = :groupId
             """)
-    Optional<GroupApplication> findByIdForUpdate(
-            @Param("applicationId") Long applicationId
+    Optional<GroupApplication> findByIdAndGroupIdForUpdate(
+            @Param("applicationId") Long applicationId,
+            @Param("groupId") Long groupId
     );
 }
