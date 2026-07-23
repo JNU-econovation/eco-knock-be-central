@@ -28,6 +28,9 @@ class AuthPolicyResolverTest {
         assertThat(resolve(HttpMethod.PUT, "/overview/shortcuts/reset")).isEqualTo(AuthPolicy.REQUIRED);
         assertThat(resolve(HttpMethod.PUT, "/overview/layout")).isEqualTo(AuthPolicy.REQUIRED);
         assertThat(resolve(HttpMethod.GET, "/profile")).isEqualTo(AuthPolicy.REQUIRED);
+        assertThat(resolve(HttpMethod.GET, "/groups")).isEqualTo(AuthPolicy.REQUIRED);
+        assertThat(resolve(HttpMethod.GET, "/groups/me")).isEqualTo(AuthPolicy.REQUIRED);
+        assertThat(resolve(HttpMethod.POST, "/groups")).isEqualTo(AuthPolicy.REQUIRED);
     }
 
     private AuthPolicy resolve(HttpMethod method, String path) {
