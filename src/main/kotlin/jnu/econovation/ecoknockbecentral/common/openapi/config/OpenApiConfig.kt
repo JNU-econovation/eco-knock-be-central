@@ -46,6 +46,10 @@ class OpenApiConfig {
 
             components.addExamples(OpenApiConstants.EMPTY_SUCCESS_EXAMPLE_NAME, example(CommonResponse.emptySuccess()))
             components.addExamples(
+                OpenApiConstants.INVALID_INPUT_VALUE_EXAMPLE_NAME,
+                example(ErrorCode.INVALID_INPUT_VALUE)
+            )
+            components.addExamples(
                 OpenApiConstants.BAD_DATA_SYNTAX_EXAMPLE_NAME,
                 example(ErrorCode.BAD_DATA_SYNTAX, "올바르지 않은 url 입니다.")
             )
@@ -87,6 +91,50 @@ class OpenApiConfig {
             components.addExamples(
                 OpenApiConstants.INTERNAL_SERVER_ERROR_EXAMPLE_NAME,
                 example(ErrorCode.INTERNAL_SERVER_ERROR)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_NOT_FOUND_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_NOT_FOUND)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_APPLICATION_NOT_FOUND_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_APPLICATION_NOT_FOUND)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_ACCESS_DENIED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_ACCESS_DENIED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_LEADER_PERMISSION_REQUIRED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_LEADER_PERMISSION_REQUIRED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_MEMBER_ALREADY_EXISTS_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_APPLICATION_ALREADY_PENDING_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_APPLICATION_ALREADY_PENDING)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_APPLICATION_ALREADY_PROCESSED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_APPLICATION_ALREADY_PROCESSED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_CAPACITY_REACHED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_CAPACITY_REACHED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_RECRUITMENT_CLOSED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_RECRUITMENT_CLOSED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_APPLICATION_CONTENT_INVALID_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_APPLICATION_CONTENT_INVALID)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_APPLICANT_ALREADY_MEMBER_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_APPLICANT_ALREADY_MEMBER)
             )
         }
     }
