@@ -105,11 +105,10 @@ public class GroupController {
     @GetMapping(value = "/me", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(
             summary = "내 그룹 목록 조회",
-            description = "인증된 USER 또는 ADMIN이 가입한 그룹을 그룹명 오름차순으로 조회합니다.",
+            description = "인증 회원이 가입한 그룹을 그룹명 오름차순으로 조회합니다. GUEST는 빈 목록을 반환합니다.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "내 그룹 목록 조회 성공", useReturnTypeSchema = true),
-                    @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF))),
-                    @ApiResponse(responseCode = "403", description = "현재 보안 정책에서 GUEST는 접근할 수 없음 (SECURITY_403_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class)))
+                    @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF)))
             }
     )
     public ResponseEntity<CommonResponse<List<MyGroupResponse>>> getMyGroups(
@@ -128,8 +127,7 @@ public class GroupController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "그룹 목록 조회 성공", useReturnTypeSchema = true),
                     @ApiResponse(responseCode = "400", description = "정렬 값 형식 오류 (COMMON_400_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class))),
-                    @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF))),
-                    @ApiResponse(responseCode = "403", description = "현재 보안 정책에서 GUEST는 접근할 수 없음 (SECURITY_403_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class)))
+                    @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF)))
             }
     )
     public ResponseEntity<CommonResponse<List<BrowseGroupResponse>>> browse(
@@ -151,7 +149,6 @@ public class GroupController {
                     @ApiResponse(responseCode = "200", description = "그룹 상세 조회 성공", useReturnTypeSchema = true),
                     @ApiResponse(responseCode = "400", description = "groupId 형식 오류 (COMMON_400_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class))),
                     @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF))),
-                    @ApiResponse(responseCode = "403", description = "현재 보안 정책에서 GUEST는 접근할 수 없음 (SECURITY_403_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class))),
                     @ApiResponse(responseCode = "404", description = "그룹을 찾을 수 없음 (GROUP_404_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class)))
             }
     )
