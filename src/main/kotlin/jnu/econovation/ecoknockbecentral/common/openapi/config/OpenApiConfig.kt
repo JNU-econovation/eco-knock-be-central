@@ -136,6 +136,34 @@ class OpenApiConfig {
                 OpenApiConstants.GROUP_APPLICANT_ALREADY_MEMBER_EXAMPLE_NAME,
                 example(ErrorCode.GROUP_APPLICANT_ALREADY_MEMBER)
             )
+            components.addExamples(
+                OpenApiConstants.GROUP_MEMBER_NOT_FOUND_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_MEMBER_NOT_FOUND)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_NAME_DUPLICATED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_NAME_DUPLICATED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_LEADER_CANNOT_BE_REMOVED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_LEADER_CANNOT_BE_REMOVED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_LEADER_NOT_CHANGED_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_LEADER_NOT_CHANGED)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_RECRUITMENT_PERIOD_INVALID_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_RECRUITMENT_PERIOD_INVALID)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_CAPACITY_INVALID_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_CAPACITY_INVALID)
+            )
+            components.addExamples(
+                OpenApiConstants.GROUP_NEW_LEADER_NOT_MEMBER_EXAMPLE_NAME,
+                example(ErrorCode.GROUP_NEW_LEADER_NOT_MEMBER)
+            )
         }
     }
 
