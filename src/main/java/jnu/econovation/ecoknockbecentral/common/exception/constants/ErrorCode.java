@@ -49,7 +49,27 @@ public enum ErrorCode {
     BAD_AIR_QUALITY_HISTORY_LIMIT(Domain.AIR_QUALITY, HttpStatus.BAD_REQUEST, 3, "Air Quality history limit은 %d 이상 %d 이하만 가능합니다.".formatted(GetTimeseriesHistoryRequest.MIN_LIMIT, GetTimeseriesHistoryRequest.MAX_LIMIT)),
 
     // --- AI ---
-    BAD_AI_CHAT_HISTORY_LIMIT(Domain.AI, HttpStatus.BAD_REQUEST, 1, "AI chat history limit은 1 이상 50 이하만 가능합니다.");
+    BAD_AI_CHAT_HISTORY_LIMIT(Domain.AI, HttpStatus.BAD_REQUEST, 1, "AI chat history limit은 1 이상 50 이하만 가능합니다."),
+
+    // --- GROUP ---
+    GROUP_NOT_FOUND(Domain.GROUP, HttpStatus.NOT_FOUND, 1, "그룹을 찾을 수 없습니다."),
+    GROUP_MEMBER_NOT_FOUND(Domain.GROUP, HttpStatus.NOT_FOUND, 2, "그룹원을 찾을 수 없습니다."),
+    GROUP_APPLICATION_NOT_FOUND(Domain.GROUP, HttpStatus.NOT_FOUND, 3, "그룹 지원서를 찾을 수 없습니다."),
+    GROUP_ACCESS_DENIED(Domain.GROUP, HttpStatus.FORBIDDEN, 1, "그룹에 접근할 권한이 없습니다."),
+    GROUP_LEADER_PERMISSION_REQUIRED(Domain.GROUP, HttpStatus.FORBIDDEN, 2, "그룹장 권한이 필요합니다."),
+    GROUP_NAME_DUPLICATED(Domain.GROUP, HttpStatus.CONFLICT, 1, "이미 사용 중인 그룹명입니다."),
+    GROUP_MEMBER_ALREADY_EXISTS(Domain.GROUP, HttpStatus.CONFLICT, 2, "이미 그룹에 가입한 회원입니다."),
+    GROUP_APPLICATION_ALREADY_PENDING(Domain.GROUP, HttpStatus.CONFLICT, 3, "이미 처리 대기 중인 지원서가 있습니다."),
+    GROUP_APPLICATION_ALREADY_PROCESSED(Domain.GROUP, HttpStatus.CONFLICT, 4, "이미 처리된 지원서입니다."),
+    GROUP_LEADER_CANNOT_BE_REMOVED(Domain.GROUP, HttpStatus.CONFLICT, 5, "그룹장은 그룹에서 제거할 수 없습니다."),
+    GROUP_LEADER_NOT_CHANGED(Domain.GROUP, HttpStatus.CONFLICT, 6, "현재 그룹장과 동일한 회원입니다."),
+    GROUP_CAPACITY_REACHED(Domain.GROUP, HttpStatus.CONFLICT, 7, "그룹 정원에 도달했습니다."),
+    GROUP_RECRUITMENT_PERIOD_INVALID(Domain.GROUP, HttpStatus.UNPROCESSABLE_CONTENT, 1, "모집 기간이 올바르지 않습니다."),
+    GROUP_RECRUITMENT_CLOSED(Domain.GROUP, HttpStatus.UNPROCESSABLE_CONTENT, 2, "모집이 마감된 그룹입니다."),
+    GROUP_APPLICATION_CONTENT_INVALID(Domain.GROUP, HttpStatus.UNPROCESSABLE_CONTENT, 3, "지원 내용은 1자 이상 20자 이하여야 합니다."),
+    GROUP_CAPACITY_INVALID(Domain.GROUP, HttpStatus.UNPROCESSABLE_CONTENT, 4, "그룹 정원은 1명 이상 50명 이하여야 합니다."),
+    GROUP_APPLICANT_ALREADY_MEMBER(Domain.GROUP, HttpStatus.UNPROCESSABLE_CONTENT, 5, "이미 그룹원인 회원은 지원할 수 없습니다."),
+    GROUP_NEW_LEADER_NOT_MEMBER(Domain.GROUP, HttpStatus.UNPROCESSABLE_CONTENT, 6, "새 그룹장은 기존 그룹원이어야 합니다.");
 
     private final Domain domain;
     private final HttpStatus status;
