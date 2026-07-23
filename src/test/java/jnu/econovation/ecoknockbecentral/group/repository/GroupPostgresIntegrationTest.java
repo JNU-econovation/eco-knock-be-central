@@ -11,6 +11,9 @@ import jnu.econovation.ecoknockbecentral.common.security.util.AES256Util;
 import jnu.econovation.ecoknockbecentral.common.exception.constants.ErrorCode;
 import jnu.econovation.ecoknockbecentral.group.dto.request.BrowseGroupsRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.CreateGroupRequest;
+import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupDetailRequest;
+import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupNameRequest;
+import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupRecruitmentRequest;
 import jnu.econovation.ecoknockbecentral.group.exception.GroupClientException;
 import jnu.econovation.ecoknockbecentral.group.model.entity.Group;
 import jnu.econovation.ecoknockbecentral.group.model.entity.GroupApplication;
@@ -289,6 +292,126 @@ class GroupPostgresIntegrationTest {
         )).isInstanceOfSatisfying(GroupClientException.class, exception ->
                 assertThat(exception.getErrorCode())
                         .isEqualTo(ErrorCode.GROUP_APPLICATION_ALREADY_PROCESSED));
+    }
+
+    @Test
+    void updatesGroupSettingsAndPreservesStateAfterRejectedChanges() {
+        Member leader = saveMember(201L, "수정리더");
+        Member member = saveMember(202L, "수정멤버");
+        Group group = saveAlwaysGroup("수정전", 4, leader);
+        groupMemberRepository.saveAndFlush(GroupMember.member(group, member));
+
+        groupService.updateName(
+                group.getId(),
+                leader.getId(),
+                new UpdateGroupNameRequest(" 수정후 ")
+        );
+        groupService.updateDetails(
+                group.getId(),
+                leader.getId(),
+                new UpdateGroupDetailRequest(GroupType.DEPARTMENT, " 새 소개 ", 3)
+        );
+        Instant start = Instant.parse("2026-08-01T00:00:00Z");
+        groupService.updateRecruitment(
+                group.getId(),
+                leader.getId(),
+                new UpdateGroupRecruitmentRequest(
+                        RecruitmentMode.PERIOD,
+                        start.atZone(java.time.ZoneOffset.UTC),
+                        start.plusSeconds(60).atZone(java.time.ZoneOffset.UTC)
+                )
+        );
+        entityManager.flush();
+        entityManager.clear();
+
+        Group updated = groupRepository.findById(group.getId()).orElseThrow();
+        assertThat(updated.getName()).isEqualTo("수정후");
+        assertThat(updated.getDescription()).isEqualTo("새 소개");
+        assertThat(updated.getType()).isEqualTo(GroupType.DEPARTMENT);
+        assertThat(updated.getCapacity()).isEqualTo(3);
+        assertThat(updated.getRecruitmentMode()).isEqualTo(RecruitmentMode.PERIOD);
+
+        assertThatThrownBy(() -> groupService.updateDetails(
+                group.getId(),
+                leader.getId(),
+                new UpdateGroupDetailRequest(GroupType.STUDY, "훼손되면 안 됨", 1)
+        )).isInstanceOfSatisfying(GroupClientException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GROUP_CAPACITY_INVALID));
+        entityManager.clear();
+        Group preserved = groupRepository.findById(group.getId()).orElseThrow();
+        assertThat(preserved.getType()).isEqualTo(GroupType.DEPARTMENT);
+        assertThat(preserved.getDescription()).isEqualTo("새 소개");
+        assertThat(preserved.getCapacity()).isEqualTo(3);
+    }
+
+    @Test
+    void managesMembersAndTransfersSingleLeaderWithAdmin() {
+        Member oldLeader = saveMember(203L, "나리더");
+        Member newLeader = saveMember(204L, "가멤버");
+        Member removable = saveMember(205L, "다멤버");
+        Member admin = saveMember(206L, "관리자");
+        admin.promoteToAdmin();
+        memberRepository.flush();
+        Group group = saveAlwaysGroup("멤버관리", 5, oldLeader);
+        groupMemberRepository.saveAndFlush(GroupMember.member(group, newLeader));
+        groupMemberRepository.saveAndFlush(GroupMember.member(group, removable));
+
+        var members = groupService.getMembersForManagement(group.getId(), admin.getId());
+        assertThat(members).extracting(response -> response.memberId())
+                .containsExactly(oldLeader.getId(), newLeader.getId(), removable.getId());
+
+        groupService.changeLeader(group.getId(), admin.getId(), newLeader.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(groupMemberRepository.findAllByGroupId(group.getId()))
+                .filteredOn(membership -> membership.getRole().name().equals("LEADER"))
+                .singleElement()
+                .satisfies(membership ->
+                        assertThat(membership.getMember().getId()).isEqualTo(newLeader.getId()));
+
+        assertThatThrownBy(() -> groupService.removeMember(
+                group.getId(),
+                admin.getId(),
+                newLeader.getId()
+        )).isInstanceOfSatisfying(GroupClientException.class, exception ->
+                assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.GROUP_LEADER_CANNOT_BE_REMOVED));
+        groupService.removeMember(group.getId(), admin.getId(), removable.getId());
+        assertThat(groupMemberRepository.existsByGroupIdAndMemberId(
+                group.getId(),
+                removable.getId()
+        )).isFalse();
+    }
+
+    @Test
+    void hardDeleteCascadesMembersAndApplications() {
+        Member leader = saveMember(207L, "삭제리더");
+        Member applicant = saveMember(208L, "삭제지원자");
+        Group group = saveAlwaysGroup("삭제그룹", 3, leader);
+        groupApplicationService.create(group.getId(), applicant.getId(), "삭제 지원");
+        entityManager.flush();
+        Long applicationId = groupApplicationRepository.findAll().stream()
+                .filter(application -> application.getGroup().getId().equals(group.getId()))
+                .findFirst()
+                .orElseThrow()
+                .getId();
+
+        groupService.delete(group.getId(), leader.getId());
+        entityManager.clear();
+
+        assertThat(groupRepository.findById(group.getId())).isEmpty();
+        assertThat(groupMemberRepository.findAllByGroupId(group.getId())).isEmpty();
+        assertThat(groupApplicationRepository.findById(applicationId)).isEmpty();
+    }
+
+    @Test
+    void detectsLeaderMembershipAcrossMultipleGroups() {
+        Member leader = saveMember(209L, "다중리더");
+        saveAlwaysGroup("리더그룹A", 3, leader);
+        saveAlwaysGroup("리더그룹B", 3, leader);
+
+        assertThat(groupService.hasLeaderMembership(leader.getId())).isTrue();
     }
 
     private Member saveMember(Long ssoId, String name) {
