@@ -16,8 +16,10 @@ object OpenApiConstants {
     const val BAD_REFRESH_TOKEN_EXAMPLE_NAME = "BadRefreshToken"
     const val GUEST_LOGIN_RATE_LIMIT_EXCEEDED_EXAMPLE_NAME = "GuestLoginRateLimitExceeded"
     const val UNAUTHORIZED_EXAMPLE_NAME = "Unauthorized"
+    const val FORBIDDEN_EXAMPLE_NAME = "Forbidden"
     const val AIR_QUALITY_BAD_REQUEST_EXAMPLE_NAME = "BadAirQualityResolution"
     const val AIR_QUALITY_HISTORY_LIMIT_EXAMPLE_NAME = "BadAirQualityHistoryLimit"
+    const val AI_CHAT_HISTORY_LIMIT_EXAMPLE_NAME = "BadAIChatHistoryLimit"
     const val INTERNAL_SERVER_ERROR_EXAMPLE_NAME = "InternalServerError"
 
     const val EMPTY_SUCCESS_EXAMPLE_REF = "#/components/examples/EmptySuccess"
@@ -29,7 +31,9 @@ object OpenApiConstants {
     const val BAD_REFRESH_TOKEN_EXAMPLE_REF = "#/components/examples/BadRefreshToken"
     const val GUEST_LOGIN_RATE_LIMIT_EXCEEDED_EXAMPLE_REF = "#/components/examples/GuestLoginRateLimitExceeded"
     const val UNAUTHORIZED_EXAMPLE_REF = "#/components/examples/Unauthorized"
+    const val FORBIDDEN_EXAMPLE_REF = "#/components/examples/Forbidden"
     const val AIR_QUALITY_BAD_REQUEST_EXAMPLE_REF = "#/components/examples/BadAirQualityResolution"
     const val AIR_QUALITY_HISTORY_LIMIT_EXAMPLE_REF = "#/components/examples/BadAirQualityHistoryLimit"
+    const val AI_CHAT_HISTORY_LIMIT_EXAMPLE_REF = "#/components/examples/BadAIChatHistoryLimit"
     const val INTERNAL_SERVER_ERROR_EXAMPLE_REF = "#/components/examples/InternalServerError"
 }

@@ -1,6 +1,6 @@
 package jnu.econovation.ecoknockbecentral.common.exception.constants;
 
-import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.AirQualityResolution;
+import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution;
 import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.GetTimeseriesHistoryRequest;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,10 @@ public enum ErrorCode {
     // --- AIR_QUALITY ---
     BAD_FROM_TO(Domain.AIR_QUALITY, HttpStatus.BAD_REQUEST, 1, "from은 to보다 이전이어야 합니다."),
     BAD_AIR_QUALITY_RESOLUTION(Domain.AIR_QUALITY, HttpStatus.BAD_REQUEST, 2, "Air Quality Resolution은 [ %s ] 만 가능합니다.".formatted(AirQualityResolution.supportedCodes())),
-    BAD_AIR_QUALITY_HISTORY_LIMIT(Domain.AIR_QUALITY, HttpStatus.BAD_REQUEST, 3, "Air Quality history limit은 %d 이상 %d 이하만 가능합니다.".formatted(GetTimeseriesHistoryRequest.MIN_LIMIT, GetTimeseriesHistoryRequest.MAX_LIMIT));
+    BAD_AIR_QUALITY_HISTORY_LIMIT(Domain.AIR_QUALITY, HttpStatus.BAD_REQUEST, 3, "Air Quality history limit은 %d 이상 %d 이하만 가능합니다.".formatted(GetTimeseriesHistoryRequest.MIN_LIMIT, GetTimeseriesHistoryRequest.MAX_LIMIT)),
+
+    // --- AI ---
+    BAD_AI_CHAT_HISTORY_LIMIT(Domain.AI, HttpStatus.BAD_REQUEST, 1, "AI chat history limit은 1 이상 50 이하만 가능합니다.");
 
     private final Domain domain;
     private final HttpStatus status;

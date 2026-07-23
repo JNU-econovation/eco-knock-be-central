@@ -56,6 +56,7 @@ public class AuthPolicyResolver {
             AuthRule.skip(OPENAPI_YAML),
             AuthRule.skip("/error"),
             AuthRule.skip("/favicon.ico"),
+            AuthRule.required("/air-quality/timeseries/history/default"),
             AuthRule.optional("/air-quality/**", HttpMethod.GET),
             AuthRule.required("/**")
 //          AuthRule.optional("/posts/**", HttpMethod.GET), optional 한 인증일 때 예시

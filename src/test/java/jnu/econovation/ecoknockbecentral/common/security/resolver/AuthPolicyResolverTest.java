@@ -22,6 +22,8 @@ class AuthPolicyResolverTest {
     @Test
     void airQualityReadIsOptionalAndBusinessEndpointsRequireJwt() {
         assertThat(resolve(HttpMethod.GET, "/air-quality/timeseries/latest")).isEqualTo(AuthPolicy.OPTIONAL);
+        assertThat(resolve(HttpMethod.GET, "/air-quality/timeseries/history/default")).isEqualTo(AuthPolicy.REQUIRED);
+        assertThat(resolve(HttpMethod.PUT, "/air-quality/timeseries/history/default")).isEqualTo(AuthPolicy.REQUIRED);
         assertThat(resolve(HttpMethod.PUT, "/overview/shortcuts")).isEqualTo(AuthPolicy.REQUIRED);
         assertThat(resolve(HttpMethod.PUT, "/overview/shortcuts/reset")).isEqualTo(AuthPolicy.REQUIRED);
         assertThat(resolve(HttpMethod.PUT, "/overview/layout")).isEqualTo(AuthPolicy.REQUIRED);
