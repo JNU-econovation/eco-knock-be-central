@@ -27,6 +27,14 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
     @Query("""
             SELECT groupMember
             FROM GroupMember groupMember
+            JOIN FETCH groupMember.member
+            WHERE groupMember.group.id = :groupId
+            """)
+    List<GroupMember> findAllForManagement(@Param("groupId") Long groupId);
+
+    @Query("""
+            SELECT groupMember
+            FROM GroupMember groupMember
             JOIN FETCH groupMember.group
             WHERE groupMember.member.id = :memberId
             ORDER BY groupMember.group.name ASC, groupMember.group.id ASC
@@ -53,4 +61,13 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
             @Param("groupId") Long groupId,
             @Param("memberId") Long memberId
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT groupMember
+            FROM GroupMember groupMember
+            WHERE groupMember.group.id = :groupId
+              AND groupMember.role = jnu.econovation.ecoknockbecentral.group.model.vo.GroupMemberRole.LEADER
+            """)
+    Optional<GroupMember> findLeaderByGroupIdForUpdate(@Param("groupId") Long groupId);
 }
