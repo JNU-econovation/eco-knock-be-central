@@ -2,6 +2,7 @@ package jnu.econovation.ecoknockbecentral.airquality.dto.rest.request
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jnu.econovation.ecoknockbecentral.airquality.exception.BadAirQualityHistoryLimitException
+import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution
 import java.time.OffsetDateTime
 
 data class GetTimeseriesHistoryRequest(

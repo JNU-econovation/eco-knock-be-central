@@ -71,6 +71,7 @@ class OpenApiConfig {
                 example(ErrorCode.GUEST_LOGIN_RATE_LIMIT_EXCEEDED)
             )
             components.addExamples(OpenApiConstants.UNAUTHORIZED_EXAMPLE_NAME, example(ErrorCode.UNAUTHORIZED))
+            components.addExamples(OpenApiConstants.FORBIDDEN_EXAMPLE_NAME, example(ErrorCode.FORBIDDEN))
             components.addExamples(
                 OpenApiConstants.AIR_QUALITY_BAD_REQUEST_EXAMPLE_NAME,
                 example(ErrorCode.BAD_AIR_QUALITY_RESOLUTION)
@@ -78,6 +79,10 @@ class OpenApiConfig {
             components.addExamples(
                 OpenApiConstants.AIR_QUALITY_HISTORY_LIMIT_EXAMPLE_NAME,
                 example(ErrorCode.BAD_AIR_QUALITY_HISTORY_LIMIT)
+            )
+            components.addExamples(
+                OpenApiConstants.AI_CHAT_HISTORY_LIMIT_EXAMPLE_NAME,
+                example(ErrorCode.BAD_AI_CHAT_HISTORY_LIMIT)
             )
             components.addExamples(
                 OpenApiConstants.INTERNAL_SERVER_ERROR_EXAMPLE_NAME,

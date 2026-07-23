@@ -8,5 +8,6 @@ public enum Domain {
     MEMBER,
     OVERVIEW,
     WALLET,
-    AIR_QUALITY
+    AIR_QUALITY,
+    AI
 }

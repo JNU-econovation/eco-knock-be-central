@@ -2,6 +2,7 @@ package jnu.econovation.ecoknockbecentral.auth.controller
 
 import jnu.econovation.ecoknockbecentral.EcoKnockBeCentralApplication
 import jnu.econovation.ecoknockbecentral.auth.constant.AuthConstant.ACCESS_TOKEN
+import jnu.econovation.ecoknockbecentral.airquality.service.AirQualityHistorySettingService
 import jnu.econovation.ecoknockbecentral.common.security.util.JwtUtil
 import jnu.econovation.ecoknockbecentral.member.dto.MemberInfoDTO
 import jnu.econovation.ecoknockbecentral.member.model.entity.Member
@@ -33,6 +34,7 @@ class GuestAuthorizationE2ETest(
     private val memberRepository: MemberRepository,
     private val jwtUtil: JwtUtil,
     private val overviewService: OverviewService,
+    private val airQualityHistorySettingService: AirQualityHistorySettingService,
     private val jdbcTemplate: JdbcTemplate,
 ) {
     private val memberIds = mutableListOf<Long>()
@@ -64,8 +66,14 @@ class GuestAuthorizationE2ETest(
         val resetStatus = requestStatus("/overview/shortcuts/reset", accessToken, org.springframework.http.HttpMethod.PUT)
         val layoutUpdateStatus = requestPutStatus("/overview/layout", accessToken, """{"gridSize":2}""")
         val updatedLayout = requestBody("/overview/shortcuts", accessToken)
+        val historySetting = requestBody("/air-quality/timeseries/history/default", accessToken)
+        val historySettingUpdateStatus = requestPutStatus(
+            "/air-quality/timeseries/history/default", accessToken, """{"resolution":"1h"}"""
+        )
+        val updatedHistorySetting = requestBody("/air-quality/timeseries/history/default", accessToken)
 
         val aiStatus = requestStatus("/ai/chat", accessToken, org.springframework.http.HttpMethod.POST)
+        val aiHistoryStatus = requestStatus("/ai/chat/history", accessToken)
         val walletStatus = requestStatus("/wallet/me", accessToken)
         val adminStatus = requestStatus("/admin", accessToken)
         val unregisteredAdminStatus = requestStatus("/admin/not-registered", accessToken)
@@ -75,7 +83,11 @@ class GuestAuthorizationE2ETest(
         assertThat(resetStatus).isEqualTo(HttpStatus.OK)
         assertThat(layoutUpdateStatus).isEqualTo(HttpStatus.OK)
         assertThat(updatedLayout).contains("\"gridSize\":2")
+        assertThat(historySetting).contains("\"resolution\":\"15m\"")
+        assertThat(historySettingUpdateStatus).isEqualTo(HttpStatus.OK)
+        assertThat(updatedHistorySetting).contains("\"resolution\":\"1h\"")
         assertThat(aiStatus).isEqualTo(HttpStatus.FORBIDDEN)
+        assertThat(aiHistoryStatus).isEqualTo(HttpStatus.FORBIDDEN)
         assertThat(walletStatus).isEqualTo(HttpStatus.FORBIDDEN)
         assertThat(adminStatus).isEqualTo(HttpStatus.FORBIDDEN)
         assertThat(unregisteredAdminStatus).isEqualTo(HttpStatus.FORBIDDEN)
@@ -89,6 +101,8 @@ class GuestAuthorizationE2ETest(
 
         assertThat(requestPutStatus("/overview/layout", user, """{"gridSize":2}""")).isEqualTo(HttpStatus.OK)
         assertThat(requestPutStatus("/overview/layout", admin, """{"gridSize":2}""")).isEqualTo(HttpStatus.OK)
+        assertThat(requestStatus("/ai/chat/history", user)).isEqualTo(HttpStatus.OK)
+        assertThat(requestStatus("/ai/chat/history", admin)).isEqualTo(HttpStatus.OK)
         assertThat(requestStatus("/admin/not-registered", user)).isEqualTo(HttpStatus.FORBIDDEN)
     }
 
@@ -96,6 +110,7 @@ class GuestAuthorizationE2ETest(
         val member = memberRepository.saveAndFlush(Member.createGuest(Instant.now().plus(Duration.ofHours(1))))
         memberIds += member.id
         overviewService.initializeOverview(member.id)
+        airQualityHistorySettingService.initialize(member.id)
 
         return jwtUtil.generateAccessToken(MemberInfoDTO.from(member), Duration.ofHours(1))
     }
@@ -113,6 +128,7 @@ class GuestAuthorizationE2ETest(
         memberRepository.saveAndFlush(member)
         memberIds += member.id
         overviewService.initializeOverview(member.id)
+        airQualityHistorySettingService.initialize(member.id)
 
         return jwtUtil.generateAccessToken(MemberInfoDTO.from(member), Duration.ofHours(1))
     }

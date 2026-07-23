@@ -1,6 +1,6 @@
 package jnu.econovation.ecoknockbecentral.airquality.converter
 
-import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.AirQualityResolution
+import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution
 import org.springframework.core.convert.converter.Converter
 import org.springframework.stereotype.Component
 

@@ -7,7 +7,7 @@ import jnu.econovation.ecoknockbecentral.airquality.dto.grpc.request.Power
 import jnu.econovation.ecoknockbecentral.airquality.dto.grpc.request.Power.OFF
 import jnu.econovation.ecoknockbecentral.airquality.dto.grpc.request.Power.ON
 import jnu.econovation.ecoknockbecentral.airquality.dto.internal.Quality.NORMAL
-import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.AirQualityResolution.ONE_MINUTE
+import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution.ONE_MINUTE
 import jnu.econovation.ecoknockbecentral.airquality.usecase.QueryAirQualityUseCase
 import jnu.econovation.ecoknockbecentral.control.dto.ControlSettingDTO
 import jnu.econovation.ecoknockbecentral.control.model.entity.ControlActionLog

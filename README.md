@@ -66,6 +66,7 @@ flowchart LR
 - 사용자·게스트 overview shortcut 조회·수정·기본값 재설정 및 grid size 변경
 - 텍스트 전용 AI 채팅과 최근 대화 최대 20쌍 전달
 - AI 응답의 채팅 이력 및 원본 응답 저장
+- 회원별 AI 채팅 과거 기록 최신순·커서 기반 무한스크롤 조회
 - 관리자 default shortcut·자동제어 정책·API 문서 공개 상태 관리
 - Springdoc OpenAPI와 Scalar API 문서
 - Whozin 공개 회원 조회 API 연동
@@ -403,6 +404,27 @@ sequenceDiagram
 
 `POST /ai/chat`은 JSON 본문 `{"question":"질문 내용"}`를 받습니다. 이전 대화는 오래된 순서로 최대 20쌍을 포함하며, AI 응답을 받은 뒤 채팅 이력을 저장합니다. 이력 저장에 실패해도 이미 받은 AI 답변은 반환합니다.
 
+`GET /ai/chat/history`는 인증한 USER·ADMIN 회원의 채팅 이력을 최신순으로 조회합니다. 첫 요청은 `GET /ai/chat/history?limit=20`으로 보내고, 응답의 `nextBefore`가 있으면 다음 요청에 `before`로 전달합니다. `limit`은 1 이상 50 이하이며, 더 이상 기록이 없으면 `hasNext`가 `false`이고 `nextBefore`는 `null`입니다.
+
+```json
+{
+  "isSuccess": true,
+  "message": "success",
+  "result": {
+    "items": [
+      {
+        "id": 101,
+        "question": "분리배출 방법을 알려줘",
+        "answer": "내용...",
+        "createdAt": "2026-07-23T12:30:00Z"
+      }
+    ],
+    "hasNext": true,
+    "nextBefore": "2026-07-23T12:10:00Z"
+  }
+}
+```
+
 회원이 삭제되면 `ai_chat_history.member_id` 외래 키의 PostgreSQL `ON DELETE CASCADE`에 따라 해당 회원의 AI 채팅 이력도 함께 삭제됩니다. 애플리케이션 엔티티에 `OneToMany` 컬렉션을 추가하지 않고 Flyway `V18` migration으로 DB에서 처리합니다.
 
 ### Overview 바로가기와 레이아웃
@@ -443,12 +465,15 @@ sequenceDiagram
 | 회원 | `GET` | `/profile` | 현재 로그인 회원(게스트 포함)의 역할·기수·이름·활동 상태 조회. 게스트의 기수·활동 상태는 `null` |
 | 공기질 | `GET` | `/air-quality/timeseries` | 공기질 timeseries 조회 |
 | 공기질 | `GET` | `/air-quality/timeseries/history` | 공기질 과거 데이터 조회 |
+| 공기질 | `GET` | `/air-quality/timeseries/history/default` | 로그인한 회원·게스트의 공기질 과거 시계열 기본 해상도 조회 |
+| 공기질 | `PUT` | `/air-quality/timeseries/history/default` | 로그인한 회원·게스트의 공기질 과거 시계열 기본 해상도 저장 (`{"resolution":"15m"}`) |
 | 공기질 | `GET` | `/air-quality/stream` | 공기질 SSE 스트림 |
 | 바로가기 | `GET` | `/overview/shortcuts` | 사용자·게스트 바로가기와 grid size 조회 (`iconUrl`은 null 가능) |
 | 바로가기 | `PUT` | `/overview/shortcuts` | 사용자·게스트 바로가기 전체 교체 |
 | 바로가기 | `PUT` | `/overview/shortcuts/reset` | 사용자·게스트 기본 바로가기 재설정 |
 | 바로가기 | `PUT` | `/overview/layout` | 사용자·게스트 grid size 수정 (동일 값은 `409`) |
 | AI | `POST` | `/ai/chat` | 이전 대화와 현재 질문을 이용한 AI 채팅 |
+| AI | `GET` | `/ai/chat/history` | USER·ADMIN 회원의 AI 채팅 과거 기록 조회 (limit 1~50, before 커서 기반) |
 | 지갑 | `GET` | `/wallet/me` | 현재 회원의 활성 보상 지갑 주소와 KRT 온체인 잔액 조회 |
 | 관리자 | `GET/PUT` | `/admin/api-docs-access` | API 문서 공개 상태 조회·변경 |
 | 관리자 | `GET/PUT` | `/admin/control-settings` | 자동제어 정책 조회·변경 |

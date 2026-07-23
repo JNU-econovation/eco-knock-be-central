@@ -126,7 +126,7 @@ class AirQualityProducer(
         else (airPurifier.temperatureC + sensor.temperatureC) / 2
 
         return AirQualityDTO(
-            pm25 = airPurifier.averageAqi,
+            pm25 = airPurifier.aqi,
             humidity = (airPurifier.humidity + sensor.humidityRh) / 2,
             temperature = temperature,
             estimatedEco2PPM = sensor.estimatedEco2PPM,

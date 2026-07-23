@@ -3,7 +3,7 @@ package jnu.econovation.ecoknockbecentral.airquality.service
 import jnu.econovation.ecoknockbecentral.airquality.dto.internal.AirQualityViewDTO
 import jnu.econovation.ecoknockbecentral.airquality.dto.internal.GetTimeseriesDTO
 import jnu.econovation.ecoknockbecentral.airquality.dto.internal.GetTimeseriesHistoryDTO
-import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.AirQualityResolution
+import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution
 import jnu.econovation.ecoknockbecentral.airquality.dto.internal.AirQualityTimeseriesPointDTO
 import jnu.econovation.ecoknockbecentral.airquality.dto.rest.response.GetAirQualityResponse
 import jnu.econovation.ecoknockbecentral.airquality.exception.BadFromToException
