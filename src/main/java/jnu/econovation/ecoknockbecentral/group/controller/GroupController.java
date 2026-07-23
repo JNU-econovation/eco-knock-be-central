@@ -3,6 +3,8 @@ package jnu.econovation.ecoknockbecentral.group.controller;
 import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.ACCESS_TOKEN_SECURITY_SCHEME_NAME;
 import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.EMPTY_SUCCESS_EXAMPLE_NAME;
 import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.EMPTY_SUCCESS_EXAMPLE_REF;
+import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.GROUP_ACCESS_DENIED_EXAMPLE_NAME;
+import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.GROUP_ACCESS_DENIED_EXAMPLE_REF;
 import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.GROUP_CAPACITY_INVALID_EXAMPLE_NAME;
 import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.GROUP_CAPACITY_INVALID_EXAMPLE_REF;
 import static jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.GROUP_LEADER_CANNOT_BE_REMOVED_EXAMPLE_NAME;
@@ -44,10 +46,10 @@ import jnu.econovation.ecoknockbecentral.group.dto.request.ChangeGroupLeaderRequ
 import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupDetailRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupNameRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupRecruitmentRequest;
-import jnu.econovation.ecoknockbecentral.group.dto.response.BrowseGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.CreateGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.GroupDetailResponse;
-import jnu.econovation.ecoknockbecentral.group.dto.response.MyGroupResponse;
+import jnu.econovation.ecoknockbecentral.group.dto.response.GroupMemberIdentityResponse;
+import jnu.econovation.ecoknockbecentral.group.dto.response.GroupSummaryResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.ManageGroupMemberResponse;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupSort;
 import jnu.econovation.ecoknockbecentral.group.service.GroupService;
@@ -111,7 +113,7 @@ public class GroupController {
                     @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF)))
             }
     )
-    public ResponseEntity<CommonResponse<List<MyGroupResponse>>> getMyGroups(
+    public ResponseEntity<CommonResponse<List<GroupSummaryResponse>>> getMyGroups(
             @Parameter(hidden = true)
             @AuthenticationPrincipal EcoKnockUserDetails userDetails
     ) {
@@ -130,21 +132,26 @@ public class GroupController {
                     @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF)))
             }
     )
-    public ResponseEntity<CommonResponse<List<BrowseGroupResponse>>> browse(
+    public ResponseEntity<CommonResponse<List<GroupSummaryResponse>>> browse(
             @Parameter(description = "true이면 CLOSED 그룹만 제외", example = "false", schema = @Schema(defaultValue = "false"))
             @RequestParam(defaultValue = "false") boolean excludeClosed,
             @Parameter(description = "정렬 방식", example = "NAME_ASC", schema = @Schema(defaultValue = "NAME_ASC", allowableValues = {"NAME_ASC", "NAME_DESC", "RECENT", "DEADLINE_ASC"}))
-            @RequestParam(defaultValue = "NAME_ASC") GroupSort sort
+            @RequestParam(defaultValue = "NAME_ASC") GroupSort sort,
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal EcoKnockUserDetails userDetails
     ) {
         return ResponseEntity.ok(CommonResponse.success(
-                groupService.browse(new BrowseGroupsRequest(excludeClosed, sort))
+                groupService.browse(
+                        new BrowseGroupsRequest(excludeClosed, sort),
+                        userDetails.memberInfo().getId()
+                )
         ));
     }
 
     @GetMapping(value = "/{groupId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(
             summary = "그룹 상세 조회",
-            description = "그룹 설정, 그룹장, 전체 그룹원과 호출 회원의 가입·그룹장 여부를 조회합니다.",
+            description = "그룹 설정, 그룹장, 전체 그룹원과 호출 회원의 가입·그룹장 여부, PENDING 지원 상태와 수행 가능한 권한을 조회합니다. 처리된 지원 이력은 노출하지 않습니다.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "그룹 상세 조회 성공", useReturnTypeSchema = true),
                     @ApiResponse(responseCode = "400", description = "groupId 형식 오류 (COMMON_400_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class))),
@@ -158,7 +165,37 @@ public class GroupController {
             @AuthenticationPrincipal EcoKnockUserDetails userDetails
     ) {
         return ResponseEntity.ok(CommonResponse.success(
-                groupService.getDetail(groupId, userDetails.memberInfo().getId())
+                groupService.getDetail(
+                        groupId,
+                        userDetails.memberInfo().getId(),
+                        userDetails.memberInfo().getRole()
+                )
+        ));
+    }
+
+    @GetMapping(value = "/{groupId}/members", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "그룹원 식별 목록 조회",
+            description = "해당 그룹의 그룹원 또는 ADMIN이 그룹원 ID, 이름과 그룹장 여부를 조회합니다.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "그룹원 식별 목록 조회 성공", useReturnTypeSchema = true),
+                    @ApiResponse(responseCode = "400", description = "groupId 형식 오류 (COMMON_400_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = INVALID_INPUT_VALUE_EXAMPLE_NAME, ref = INVALID_INPUT_VALUE_EXAMPLE_REF))),
+                    @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = UNAUTHORIZED_EXAMPLE_NAME, ref = UNAUTHORIZED_EXAMPLE_REF))),
+                    @ApiResponse(responseCode = "403", description = "그룹원 또는 ADMIN 권한 없음 (GROUP_403_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = GROUP_ACCESS_DENIED_EXAMPLE_NAME, ref = GROUP_ACCESS_DENIED_EXAMPLE_REF))),
+                    @ApiResponse(responseCode = "404", description = "그룹을 찾을 수 없음 (GROUP_404_001)", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CommonResponse.class), examples = @ExampleObject(name = GROUP_NOT_FOUND_EXAMPLE_NAME, ref = GROUP_NOT_FOUND_EXAMPLE_REF)))
+            }
+    )
+    public ResponseEntity<CommonResponse<List<GroupMemberIdentityResponse>>> getMembers(
+            @PathVariable Long groupId,
+            @Parameter(hidden = true)
+            @AuthenticationPrincipal EcoKnockUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(CommonResponse.success(
+                groupService.getMembers(
+                        groupId,
+                        userDetails.memberInfo().getId(),
+                        userDetails.memberInfo().getRole()
+                )
         ));
     }
 

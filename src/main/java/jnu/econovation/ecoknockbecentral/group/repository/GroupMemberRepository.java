@@ -35,15 +35,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
     @Query("""
             SELECT groupMember
             FROM GroupMember groupMember
-            JOIN FETCH groupMember.group
-            WHERE groupMember.member.id = :memberId
-            ORDER BY groupMember.group.name ASC, groupMember.group.id ASC
-            """)
-    List<GroupMember> findAllByMemberIdWithGroup(@Param("memberId") Long memberId);
-
-    @Query("""
-            SELECT groupMember
-            FROM GroupMember groupMember
             JOIN FETCH groupMember.member
             WHERE groupMember.group.id = :groupId
             ORDER BY groupMember.member.name ASC, groupMember.member.id ASC

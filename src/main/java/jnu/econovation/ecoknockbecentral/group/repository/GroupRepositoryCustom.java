@@ -9,6 +9,9 @@ public interface GroupRepositoryCustom {
     List<GroupBrowseRow> findAllForBrowse(
             boolean excludeClosed,
             GroupSort sort,
-            Instant now
+            Instant now,
+            Long requesterId
     );
+
+    List<GroupBrowseRow> findAllForMember(Long memberId, Instant now);
 }

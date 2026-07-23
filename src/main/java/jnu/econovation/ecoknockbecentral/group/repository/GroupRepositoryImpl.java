@@ -29,23 +29,48 @@ public class GroupRepositoryImpl implements GroupRepositoryCustom {
     public List<GroupBrowseRow> findAllForBrowse(
             boolean excludeClosed,
             GroupSort sort,
-            Instant now
+            Instant now,
+            Long requesterId
+    ) {
+        return findAllSummaries(excludeClosed, sort, now, requesterId, false);
+    }
+
+    @Override
+    public List<GroupBrowseRow> findAllForMember(Long memberId, Instant now) {
+        return findAllSummaries(false, GroupSort.NAME_ASC, now, memberId, true);
+    }
+
+    private List<GroupBrowseRow> findAllSummaries(
+            boolean excludeClosed,
+            GroupSort sort,
+            Instant now,
+            Long requesterId,
+            boolean onlyMember
     ) {
         QGroup group = QGroup.group;
-        QGroupMember member = new QGroupMember("browseMember");
-        QGroupMember leader = new QGroupMember("browseLeader");
+        QGroupMember member = new QGroupMember("summaryMember");
+        QGroupMember leader = new QGroupMember("summaryLeader");
+        QGroupMember requester = new QGroupMember("summaryRequester");
 
         NumberExpression<Long> memberCount = member.id.count();
         BooleanExpression capacityAvailable = memberCount.lt(group.capacity.longValue());
         BooleanExpression periodNotEnded = group.recruitmentMode.eq(RecruitmentMode.ALWAYS)
                 .or(group.recruitmentEndAt.goe(now));
+        NumberExpression<Integer> requesterMembership = new CaseBuilder()
+                .when(requester.id.isNotNull()).then(1)
+                .otherwise(0);
+        NumberExpression<Integer> requesterLeadership = new CaseBuilder()
+                .when(requester.role.eq(GroupMemberRole.LEADER)).then(1)
+                .otherwise(0);
 
         return queryFactory
                 .select(Projections.constructor(
                         GroupBrowseRow.class,
                         group,
                         memberCount,
-                        leader.member.name
+                        leader.member.name,
+                        requesterMembership.eq(1),
+                        requesterLeadership.eq(1)
                 ))
                 .from(group)
                 .leftJoin(member).on(member.group.eq(group))
@@ -53,8 +78,15 @@ public class GroupRepositoryImpl implements GroupRepositoryCustom {
                         leader.group.eq(group)
                                 .and(leader.role.eq(GroupMemberRole.LEADER))
                 )
-                .where(excludeClosed ? periodNotEnded : null)
-                .groupBy(group, leader.member.name)
+                .leftJoin(requester).on(
+                        requester.group.eq(group)
+                                .and(requester.member.id.eq(requesterId))
+                )
+                .where(
+                        excludeClosed ? periodNotEnded : null,
+                        onlyMember ? requester.id.isNotNull() : null
+                )
+                .groupBy(group, leader.member.name, requester.id, requester.role)
                 .having(excludeClosed ? capacityAvailable : null)
                 .orderBy(orderSpecifiers(sort, group, memberCount, now))
                 .fetch();

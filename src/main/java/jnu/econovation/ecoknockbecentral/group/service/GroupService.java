@@ -9,17 +9,22 @@ import jnu.econovation.ecoknockbecentral.group.dto.request.CreateGroupRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupDetailRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupNameRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupRecruitmentRequest;
-import jnu.econovation.ecoknockbecentral.group.dto.response.BrowseGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.CreateGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.GroupDetailResponse;
+import jnu.econovation.ecoknockbecentral.group.dto.response.GroupMemberIdentityResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.GroupMemberResponse;
+import jnu.econovation.ecoknockbecentral.group.dto.response.GroupPermissionsResponse;
+import jnu.econovation.ecoknockbecentral.group.dto.response.GroupSummaryResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.ManageGroupMemberResponse;
-import jnu.econovation.ecoknockbecentral.group.dto.response.MyGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.exception.GroupClientException;
 import jnu.econovation.ecoknockbecentral.group.model.entity.Group;
 import jnu.econovation.ecoknockbecentral.group.model.entity.GroupMember;
+import jnu.econovation.ecoknockbecentral.group.model.vo.GroupApplicationStatus;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupMemberRole;
+import jnu.econovation.ecoknockbecentral.group.model.vo.MyGroupApplicationStatus;
 import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentMode;
+import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentStatus;
+import jnu.econovation.ecoknockbecentral.group.repository.GroupApplicationRepository;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupBrowseRow;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupMemberRepository;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupRepository;
@@ -35,15 +40,18 @@ public class GroupService {
 
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final GroupApplicationRepository groupApplicationRepository;
     private final MemberService memberService;
 
     public GroupService(
             GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
+            GroupApplicationRepository groupApplicationRepository,
             MemberService memberService
     ) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.groupApplicationRepository = groupApplicationRepository;
         this.memberService = memberService;
     }
 
@@ -77,31 +85,31 @@ public class GroupService {
     }
 
     @Transactional(readOnly = true)
-    public List<MyGroupResponse> getMyGroups(Long memberId) {
-        return groupMemberRepository.findAllByMemberIdWithGroup(memberId).stream()
-                .map(groupMember -> new MyGroupResponse(
-                        groupMember.getGroup().getId(),
-                        groupMember.getGroup().getType(),
-                        groupMember.getGroup().getName(),
-                        groupMember.getRole() == GroupMemberRole.LEADER
-                ))
+    public List<GroupSummaryResponse> getMyGroups(Long memberId) {
+        Instant now = Instant.now();
+        return groupRepository.findAllForMember(memberId, now).stream()
+                .map(row -> toSummaryResponse(row, now))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<BrowseGroupResponse> browse(BrowseGroupsRequest request) {
+    public List<GroupSummaryResponse> browse(
+            BrowseGroupsRequest request,
+            Long requesterId
+    ) {
         Instant now = Instant.now();
         return groupRepository.findAllForBrowse(
                         request.excludeClosed(),
                         request.sort(),
-                        now
+                        now,
+                        requesterId
                 ).stream()
-                .map(row -> toBrowseResponse(row, now))
+                .map(row -> toSummaryResponse(row, now))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public GroupDetailResponse getDetail(Long groupId, Long requesterId) {
+    public GroupDetailResponse getDetail(Long groupId, Long requesterId, Role requesterRole) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new GroupClientException(ErrorCode.GROUP_NOT_FOUND));
         List<GroupMember> groupMembers = groupMemberRepository.findAllByGroupIdWithMember(groupId);
@@ -114,6 +122,25 @@ public class GroupService {
                 .anyMatch(groupMember -> groupMember.getMember().getId().equals(requesterId));
         boolean isLeader = leader.getMember().getId().equals(requesterId);
         int memberCount = groupMembers.size();
+        boolean hasPendingApplication = groupApplicationRepository
+                .existsByGroupIdAndApplicantIdAndStatus(
+                        groupId,
+                        requesterId,
+                        GroupApplicationStatus.PENDING
+                );
+        MyGroupApplicationStatus applicationStatus = hasPendingApplication
+                ? MyGroupApplicationStatus.PENDING
+                : MyGroupApplicationStatus.NONE;
+        Instant now = Instant.now();
+        RecruitmentStatus recruitmentStatus = group.getRecruitmentStatus(memberCount, now);
+        boolean isAdmin = requesterRole == Role.ADMIN;
+        boolean canManage = isLeader || isAdmin;
+        boolean canApply = requesterRole != Role.GUEST
+                && !isMember
+                && !hasPendingApplication
+                && memberCount < group.getCapacity()
+                && (recruitmentStatus == RecruitmentStatus.RECRUITING
+                || recruitmentStatus == RecruitmentStatus.ALWAYS_RECRUITING);
 
         return new GroupDetailResponse(
                 group.getId(),
@@ -123,7 +150,7 @@ public class GroupService {
                 memberCount,
                 group.getCapacity(),
                 group.getRecruitmentMode(),
-                group.getRecruitmentStatus(memberCount, Instant.now()),
+                recruitmentStatus,
                 group.getRecruitmentStartAt(),
                 group.getRecruitmentEndAt(),
                 leader.getMember().getName(),
@@ -131,8 +158,35 @@ public class GroupService {
                         .map(groupMember -> new GroupMemberResponse(groupMember.getMember().getName()))
                         .toList(),
                 isMember,
-                isLeader
+                isLeader,
+                applicationStatus,
+                new GroupPermissionsResponse(
+                        isMember || isAdmin,
+                        canManage,
+                        canManage,
+                        isMember || isAdmin,
+                        canManage,
+                        canManage,
+                        canApply
+                )
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<GroupMemberIdentityResponse> getMembers(
+            Long groupId,
+            Long requesterId,
+            Role requesterRole
+    ) {
+        groupRepository.findById(groupId)
+                .orElseThrow(() -> new GroupClientException(ErrorCode.GROUP_NOT_FOUND));
+        if (requesterRole != Role.ADMIN
+                && !groupMemberRepository.existsByGroupIdAndMemberId(groupId, requesterId)) {
+            throw new GroupClientException(ErrorCode.GROUP_ACCESS_DENIED);
+        }
+        return groupMemberRepository.findAllByGroupIdWithMember(groupId).stream()
+                .map(GroupMemberIdentityResponse::from)
+                .toList();
     }
 
     @Transactional
@@ -265,15 +319,18 @@ public class GroupService {
         return groupMemberRepository.existsByMemberIdAndRole(memberId, GroupMemberRole.LEADER);
     }
 
-    private BrowseGroupResponse toBrowseResponse(GroupBrowseRow row, Instant now) {
+    private GroupSummaryResponse toSummaryResponse(GroupBrowseRow row, Instant now) {
         int memberCount = Math.toIntExact(row.currentMemberCount());
-        return new BrowseGroupResponse(
+        return new GroupSummaryResponse(
                 row.group().getId(),
+                row.group().getType(),
                 row.group().getName(),
                 memberCount,
                 row.group().getCapacity(),
                 row.leaderName(),
-                row.group().getRecruitmentStatus(memberCount, now)
+                row.group().getRecruitmentStatus(memberCount, now),
+                row.isMember(),
+                row.isLeader()
         );
     }
 
