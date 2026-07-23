@@ -1,14 +1,19 @@
 package jnu.econovation.ecoknockbecentral.group.service;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import jnu.econovation.ecoknockbecentral.common.exception.constants.ErrorCode;
 import jnu.econovation.ecoknockbecentral.group.dto.request.BrowseGroupsRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.CreateGroupRequest;
+import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupDetailRequest;
+import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupNameRequest;
+import jnu.econovation.ecoknockbecentral.group.dto.request.UpdateGroupRecruitmentRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.response.BrowseGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.CreateGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.GroupDetailResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.GroupMemberResponse;
+import jnu.econovation.ecoknockbecentral.group.dto.response.ManageGroupMemberResponse;
 import jnu.econovation.ecoknockbecentral.group.dto.response.MyGroupResponse;
 import jnu.econovation.ecoknockbecentral.group.exception.GroupClientException;
 import jnu.econovation.ecoknockbecentral.group.model.entity.Group;
@@ -19,6 +24,7 @@ import jnu.econovation.ecoknockbecentral.group.repository.GroupBrowseRow;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupMemberRepository;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupRepository;
 import jnu.econovation.ecoknockbecentral.member.model.entity.Member;
+import jnu.econovation.ecoknockbecentral.member.model.vo.Role;
 import jnu.econovation.ecoknockbecentral.member.service.MemberService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -129,6 +135,136 @@ public class GroupService {
         );
     }
 
+    @Transactional
+    public void updateName(Long groupId, Long requesterId, UpdateGroupNameRequest request) {
+        Group group = getGroupForUpdate(groupId);
+        Member requester = memberService.getEntityOrThrow(requesterId);
+        requireLeaderOrAdmin(groupId, requester);
+
+        String name = request.name().trim();
+        if (group.getName().equals(name)) {
+            return;
+        }
+        if (groupRepository.existsByNameAndIdNot(name, groupId)) {
+            throw new GroupClientException(ErrorCode.GROUP_NAME_DUPLICATED);
+        }
+        group.updateName(name);
+        try {
+            groupRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new GroupClientException(ErrorCode.GROUP_NAME_DUPLICATED);
+        }
+    }
+
+    @Transactional
+    public void updateDetails(
+            Long groupId,
+            Long requesterId,
+            UpdateGroupDetailRequest request
+    ) {
+        Group group = getGroupForUpdate(groupId);
+        Member requester = memberService.getEntityOrThrow(requesterId);
+        requireLeaderOrAdmin(groupId, requester);
+
+        int memberCount = Math.toIntExact(groupMemberRepository.countByGroupId(groupId));
+        if (request.capacity() < memberCount) {
+            throw new GroupClientException(ErrorCode.GROUP_CAPACITY_INVALID);
+        }
+        group.updateDetails(request.introduction(), request.type(), request.capacity());
+    }
+
+    @Transactional
+    public void updateRecruitment(
+            Long groupId,
+            Long requesterId,
+            UpdateGroupRecruitmentRequest request
+    ) {
+        Group group = getGroupForUpdate(groupId);
+        Member requester = memberService.getEntityOrThrow(requesterId);
+        requireLeaderOrAdmin(groupId, requester);
+        try {
+            group.updateRecruitment(
+                    request.recruitmentMode(),
+                    toInstant(request.recruitmentStartAt()),
+                    toInstant(request.recruitmentEndAt())
+            );
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw new GroupClientException(ErrorCode.GROUP_RECRUITMENT_PERIOD_INVALID);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<ManageGroupMemberResponse> getMembersForManagement(
+            Long groupId,
+            Long requesterId
+    ) {
+        groupRepository.findById(groupId)
+                .orElseThrow(() -> new GroupClientException(ErrorCode.GROUP_NOT_FOUND));
+        Member requester = memberService.getEntityOrThrow(requesterId);
+        requireLeaderOrAdmin(groupId, requester);
+        return groupMemberRepository.findAllForManagement(groupId).stream()
+                .sorted(Comparator
+                        .comparing((GroupMember membership) ->
+                                membership.getRole() == GroupMemberRole.LEADER ? 0 : 1)
+                        .thenComparing(membership -> membership.getMember().getName())
+                        .thenComparing(membership -> membership.getMember().getId()))
+                .map(ManageGroupMemberResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public void removeMember(Long groupId, Long requesterId, Long memberId) {
+        getGroupForUpdate(groupId);
+        Member requester = memberService.getEntityOrThrow(requesterId);
+        requireLeaderOrAdmin(groupId, requester);
+        GroupMember target = groupMemberRepository.findByGroupIdAndMemberIdForUpdate(
+                        groupId,
+                        memberId
+                )
+                .orElseThrow(() -> new GroupClientException(ErrorCode.GROUP_MEMBER_NOT_FOUND));
+        if (target.getRole() == GroupMemberRole.LEADER) {
+            throw new GroupClientException(ErrorCode.GROUP_LEADER_CANNOT_BE_REMOVED);
+        }
+        groupMemberRepository.delete(target);
+    }
+
+    @Transactional
+    public void changeLeader(Long groupId, Long requesterId, Long memberId) {
+        getGroupForUpdate(groupId);
+        Member requester = memberService.getEntityOrThrow(requesterId);
+        requireLeaderOrAdmin(groupId, requester);
+        GroupMember currentLeader = groupMemberRepository.findLeaderByGroupIdForUpdate(groupId)
+                .orElseThrow(() -> new GroupClientException(ErrorCode.GROUP_MEMBER_NOT_FOUND));
+        if (currentLeader.getMember().getId().equals(memberId)) {
+            throw new GroupClientException(ErrorCode.GROUP_LEADER_NOT_CHANGED);
+        }
+        GroupMember newLeader = groupMemberRepository.findByGroupIdAndMemberIdForUpdate(
+                        groupId,
+                        memberId
+                )
+                .orElseThrow(() -> new GroupClientException(
+                        ErrorCode.GROUP_NEW_LEADER_NOT_MEMBER
+                ));
+
+        currentLeader.demoteToMember();
+        groupMemberRepository.flush();
+        newLeader.promoteToLeader();
+        groupMemberRepository.flush();
+    }
+
+    @Transactional
+    public void delete(Long groupId, Long requesterId) {
+        getGroupForUpdate(groupId);
+        Member requester = memberService.getEntityOrThrow(requesterId);
+        requireLeaderOrAdmin(groupId, requester);
+        groupRepository.deleteByIdWithCascade(groupId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasLeaderMembership(long memberId) {
+        return groupMemberRepository.existsByMemberIdAndRole(memberId, GroupMemberRole.LEADER);
+    }
+
     private BrowseGroupResponse toBrowseResponse(GroupBrowseRow row, Instant now) {
         int memberCount = Math.toIntExact(row.currentMemberCount());
         return new BrowseGroupResponse(
@@ -139,6 +275,27 @@ public class GroupService {
                 row.leaderName(),
                 row.group().getRecruitmentStatus(memberCount, now)
         );
+    }
+
+    private Group getGroupForUpdate(Long groupId) {
+        return groupRepository.findByIdForUpdate(groupId)
+                .orElseThrow(() -> new GroupClientException(ErrorCode.GROUP_NOT_FOUND));
+    }
+
+    private void requireLeaderOrAdmin(Long groupId, Member requester) {
+        if (requester.getRole() == Role.ADMIN) {
+            return;
+        }
+        GroupMember membership = groupMemberRepository.findByGroupIdAndMemberId(
+                        groupId,
+                        requester.getId()
+                )
+                .orElseThrow(() -> new GroupClientException(
+                        ErrorCode.GROUP_LEADER_PERMISSION_REQUIRED
+                ));
+        if (membership.getRole() != GroupMemberRole.LEADER) {
+            throw new GroupClientException(ErrorCode.GROUP_LEADER_PERMISSION_REQUIRED);
+        }
     }
 
     private void validateCapacity(int capacity) {
