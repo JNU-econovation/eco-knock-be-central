@@ -25,11 +25,14 @@ import jnu.econovation.ecoknockbecentral.group.exception.GroupClientException;
 import jnu.econovation.ecoknockbecentral.group.model.entity.Group;
 import jnu.econovation.ecoknockbecentral.group.model.entity.GroupMember;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupMemberRole;
+import jnu.econovation.ecoknockbecentral.group.model.vo.GroupApplicationStatus;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupSort;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupType;
+import jnu.econovation.ecoknockbecentral.group.model.vo.MyGroupApplicationStatus;
 import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentMode;
 import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentStatus;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupBrowseRow;
+import jnu.econovation.ecoknockbecentral.group.repository.GroupApplicationRepository;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupMemberRepository;
 import jnu.econovation.ecoknockbecentral.group.repository.GroupRepository;
 import jnu.econovation.ecoknockbecentral.member.model.entity.Member;
@@ -46,6 +49,7 @@ class GroupServiceTest {
 
     private GroupRepository groupRepository;
     private GroupMemberRepository groupMemberRepository;
+    private GroupApplicationRepository groupApplicationRepository;
     private MemberService memberService;
     private GroupService service;
 
@@ -53,8 +57,14 @@ class GroupServiceTest {
     void setUp() {
         groupRepository = mock(GroupRepository.class);
         groupMemberRepository = mock(GroupMemberRepository.class);
+        groupApplicationRepository = mock(GroupApplicationRepository.class);
         memberService = mock(MemberService.class);
-        service = new GroupService(groupRepository, groupMemberRepository, memberService);
+        service = new GroupService(
+                groupRepository,
+                groupMemberRepository,
+                groupApplicationRepository,
+                memberService
+        );
     }
 
     @Test
@@ -126,16 +136,23 @@ class GroupServiceTest {
         when(groupRepository.findAllForBrowse(
                 eq(false),
                 eq(GroupSort.NAME_ASC),
-                any(Instant.class)
+                any(Instant.class),
+                eq(7L)
         ))
-                .thenReturn(List.of(new GroupBrowseRow(group, 2, "리더")));
+                .thenReturn(List.of(new GroupBrowseRow(group, 2, "리더", true, true)));
 
-        var result = service.browse(new BrowseGroupsRequest(false, GroupSort.NAME_ASC));
+        var result = service.browse(
+                new BrowseGroupsRequest(false, GroupSort.NAME_ASC),
+                7L
+        );
 
         assertThat(result).singleElement().satisfies(response -> {
             assertThat(response.currentMemberCount()).isEqualTo(2);
             assertThat(response.leaderName()).isEqualTo("리더");
             assertThat(response.recruitmentStatus()).isEqualTo(RecruitmentStatus.CLOSED);
+            assertThat(response.type()).isEqualTo(GroupType.STUDY);
+            assertThat(response.isMember()).isTrue();
+            assertThat(response.isLeader()).isTrue();
         });
     }
 
@@ -154,21 +171,126 @@ class GroupServiceTest {
         when(groupRepository.findById(9L)).thenReturn(Optional.of(group));
         when(groupMemberRepository.findAllByGroupIdWithMember(9L)).thenReturn(List.of(leader));
 
-        var response = service.getDetail(9L, 7L);
+        var response = service.getDetail(9L, 7L, Role.USER);
 
         assertThat(response.isMember()).isTrue();
         assertThat(response.isLeader()).isTrue();
         assertThat(response.members()).containsExactly(new jnu.econovation.ecoknockbecentral.group.dto.response.GroupMemberResponse("리더"));
         assertThat(response.recruitmentStatus()).isEqualTo(RecruitmentStatus.RECRUITING);
+        assertThat(response.permissions().canEditGroup()).isTrue();
+        assertThat(response.permissions().canApply()).isFalse();
     }
 
     @Test
     void rejectsMissingDetail() {
         when(groupRepository.findById(404L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getDetail(404L, 7L))
+        assertThatThrownBy(() -> service.getDetail(404L, 7L, Role.USER))
                 .isInstanceOfSatisfying(GroupClientException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GROUP_NOT_FOUND));
+    }
+
+    @Test
+    void calculatesApplicationStateAndPermissionsForEveryRequesterKind() {
+        Group group = group("권한그룹", 5);
+        Member leaderMember = member(7L, "리더", Role.USER);
+        Member ordinaryMember = member(8L, "멤버", Role.USER);
+        when(groupRepository.findById(9L)).thenReturn(Optional.of(group));
+        when(groupMemberRepository.findAllByGroupIdWithMember(9L)).thenReturn(List.of(
+                GroupMember.leader(group, leaderMember),
+                GroupMember.member(group, ordinaryMember)
+        ));
+        when(groupApplicationRepository.existsByGroupIdAndApplicantIdAndStatus(
+                9L, 10L, GroupApplicationStatus.PENDING
+        )).thenReturn(true);
+
+        var leader = service.getDetail(9L, 7L, Role.USER);
+        var member = service.getDetail(9L, 8L, Role.USER);
+        var pendingApplicant = service.getDetail(9L, 10L, Role.USER);
+        var admin = service.getDetail(9L, 99L, Role.ADMIN);
+        var guest = service.getDetail(9L, 100L, Role.GUEST);
+
+        assertThat(leader.permissions()).satisfies(permissions -> {
+            assertThat(permissions.canViewSettings()).isTrue();
+            assertThat(permissions.canEditGroup()).isTrue();
+            assertThat(permissions.canManageMembers()).isTrue();
+            assertThat(permissions.canViewApplications()).isTrue();
+            assertThat(permissions.canReviewApplications()).isTrue();
+            assertThat(permissions.canDeleteGroup()).isTrue();
+            assertThat(permissions.canApply()).isFalse();
+        });
+        assertThat(member.permissions()).satisfies(permissions -> {
+            assertThat(permissions.canViewSettings()).isTrue();
+            assertThat(permissions.canEditGroup()).isFalse();
+            assertThat(permissions.canViewApplications()).isTrue();
+            assertThat(permissions.canReviewApplications()).isFalse();
+            assertThat(permissions.canApply()).isFalse();
+        });
+        assertThat(pendingApplicant.myApplicationStatus())
+                .isEqualTo(MyGroupApplicationStatus.PENDING);
+        assertThat(pendingApplicant.permissions().canApply()).isFalse();
+        assertThat(admin.permissions().canEditGroup()).isTrue();
+        assertThat(admin.permissions().canApply()).isTrue();
+        assertThat(guest.permissions()).satisfies(permissions -> {
+            assertThat(permissions.canViewSettings()).isFalse();
+            assertThat(permissions.canEditGroup()).isFalse();
+            assertThat(permissions.canViewApplications()).isFalse();
+            assertThat(permissions.canApply()).isFalse();
+        });
+    }
+
+    @Test
+    void disallowsApplicationWhenGroupIsUpcomingOrFull() {
+        Member leaderMember = member(7L, "리더", Role.USER);
+        Group full = group("정원마감", 1);
+        Instant now = Instant.now();
+        Group upcoming = Group.create(
+                "모집예정",
+                "소개",
+                GroupType.STUDY,
+                2,
+                RecruitmentMode.PERIOD,
+                now.plusSeconds(60),
+                now.plusSeconds(120)
+        );
+        ReflectionTestUtils.setField(upcoming, "id", 10L);
+        when(groupRepository.findById(9L)).thenReturn(Optional.of(full));
+        when(groupRepository.findById(10L)).thenReturn(Optional.of(upcoming));
+        when(groupMemberRepository.findAllByGroupIdWithMember(9L))
+                .thenReturn(List.of(GroupMember.leader(full, leaderMember)));
+        when(groupMemberRepository.findAllByGroupIdWithMember(10L))
+                .thenReturn(List.of(GroupMember.leader(upcoming, leaderMember)));
+
+        assertThat(service.getDetail(9L, 20L, Role.USER).permissions().canApply()).isFalse();
+        assertThat(service.getDetail(10L, 20L, Role.USER).permissions().canApply()).isFalse();
+    }
+
+    @Test
+    void exposesMemberIdentityOnlyToGroupMemberOrAdmin() {
+        Group group = group("조회그룹", 5);
+        Member first = member(7L, "동명이인", Role.USER);
+        Member second = member(8L, "동명이인", Role.USER);
+        when(groupRepository.findById(9L)).thenReturn(Optional.of(group));
+        when(groupMemberRepository.existsByGroupIdAndMemberId(9L, 7L)).thenReturn(true);
+        when(groupMemberRepository.findAllByGroupIdWithMember(9L)).thenReturn(List.of(
+                GroupMember.leader(group, first),
+                GroupMember.member(group, second)
+        ));
+
+        assertThat(service.getMembers(9L, 7L, Role.USER))
+                .extracting(response -> response.memberId())
+                .containsExactly(7L, 8L);
+        assertThat(service.getMembers(9L, 99L, Role.ADMIN))
+                .extracting(response -> response.name())
+                .containsOnly("동명이인");
+        assertGroupError(
+                () -> service.getMembers(9L, 10L, Role.USER),
+                ErrorCode.GROUP_ACCESS_DENIED
+        );
+        assertGroupError(
+                () -> service.getMembers(9L, 11L, Role.GUEST),
+                ErrorCode.GROUP_ACCESS_DENIED
+        );
     }
 
     @Test

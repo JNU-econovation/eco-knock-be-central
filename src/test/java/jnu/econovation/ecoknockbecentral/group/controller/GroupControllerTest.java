@@ -43,13 +43,14 @@ class GroupControllerTest {
     void appliesBrowseDefaultsPassedByWebBinding() {
         GroupService service = mock(GroupService.class);
         GroupController controller = new GroupController(service);
-        when(service.browse(new BrowseGroupsRequest(false, GroupSort.NAME_ASC)))
+        EcoKnockUserDetails user = user(7L);
+        when(service.browse(new BrowseGroupsRequest(false, GroupSort.NAME_ASC), 7L))
                 .thenReturn(List.of());
 
-        var response = controller.browse(false, GroupSort.NAME_ASC);
+        var response = controller.browse(false, GroupSort.NAME_ASC, user);
 
         assertThat(response.getBody().result()).isEmpty();
-        verify(service).browse(new BrowseGroupsRequest(false, GroupSort.NAME_ASC));
+        verify(service).browse(new BrowseGroupsRequest(false, GroupSort.NAME_ASC), 7L);
     }
 
     @Test
@@ -95,6 +96,19 @@ class GroupControllerTest {
 
         assertThat(response.getBody().result()).isEmpty();
         verify(service).getMembersForManagement(3L, 7L);
+    }
+
+    @Test
+    void delegatesMemberIdentityQueryWithAuthenticatedRole() {
+        GroupService service = mock(GroupService.class);
+        GroupController controller = new GroupController(service);
+        EcoKnockUserDetails user = user(7L);
+        when(service.getMembers(3L, 7L, Role.USER)).thenReturn(List.of());
+
+        var response = controller.getMembers(3L, user);
+
+        assertThat(response.getBody().result()).isEmpty();
+        verify(service).getMembers(3L, 7L, Role.USER);
     }
 
     private EcoKnockUserDetails user(Long id) {

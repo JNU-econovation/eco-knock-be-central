@@ -119,13 +119,24 @@ class GroupAuthorizationE2ETest {
                 guest.token(),
                 null
         );
+        HttpResult members = exchange(
+                HttpMethod.GET,
+                "/groups/" + groupId + "/members",
+                guest.token(),
+                null
+        );
 
         assertThat(browse.status()).isEqualTo(HttpStatus.OK);
         assertThat(myGroups.status()).isEqualTo(HttpStatus.OK);
         assertThat(json(myGroups).path("result").isEmpty()).isTrue();
         assertThat(detail.status()).isEqualTo(HttpStatus.OK);
+        assertThat(json(detail).path("result").path("myApplicationStatus").asText())
+                .isEqualTo("NONE");
+        assertThat(json(detail).path("result").path("permissions").path("canApply").asBoolean())
+                .isFalse();
         assertThat(create.status()).isEqualTo(HttpStatus.FORBIDDEN);
         assertError(applications, HttpStatus.FORBIDDEN, "GROUP_403_001");
+        assertError(members, HttpStatus.FORBIDDEN, "GROUP_403_001");
         assertError(management, HttpStatus.FORBIDDEN, "GROUP_403_002");
     }
 
@@ -145,10 +156,36 @@ class GroupAuthorizationE2ETest {
         long groupId = json(create).path("result").path("groupId").asLong();
         groupIds.add(groupId);
 
-        assertThat(exchange(HttpMethod.GET, "/groups", applicant.token(), null).body())
-                .contains(groupName);
-        assertThat(exchange(HttpMethod.GET, "/groups/" + groupId, applicant.token(), null).status())
-                .isEqualTo(HttpStatus.OK);
+        JsonNode myGroup = findByGroupId(
+                json(exchange(HttpMethod.GET, "/groups/me", leader.token(), null)).path("result"),
+                groupId
+        );
+        assertThat(myGroup.path("type").asText()).isEqualTo("STUDY");
+        assertThat(myGroup.path("currentMemberCount").asInt()).isEqualTo(1);
+        assertThat(myGroup.path("capacity").asInt()).isEqualTo(5);
+        assertThat(myGroup.path("leaderName").asText()).isEqualTo("흐름리더");
+        assertThat(myGroup.path("recruitmentStatus").asText())
+                .isEqualTo("ALWAYS_RECRUITING");
+        assertThat(myGroup.path("isMember").asBoolean()).isTrue();
+        assertThat(myGroup.path("isLeader").asBoolean()).isTrue();
+
+        HttpResult browse = exchange(HttpMethod.GET, "/groups", applicant.token(), null);
+        JsonNode browseGroup = findByGroupId(json(browse).path("result"), groupId);
+        assertThat(browseGroup.path("name").asText()).isEqualTo(groupName);
+        assertThat(browseGroup.path("type").asText()).isEqualTo("STUDY");
+        assertThat(browseGroup.path("currentMemberCount").asInt()).isEqualTo(1);
+        assertThat(browseGroup.path("capacity").asInt()).isEqualTo(5);
+        assertThat(browseGroup.path("leaderName").asText()).isEqualTo("흐름리더");
+        assertThat(browseGroup.path("recruitmentStatus").asText())
+                .isEqualTo("ALWAYS_RECRUITING");
+        assertThat(browseGroup.path("isMember").asBoolean()).isFalse();
+        assertThat(browseGroup.path("isLeader").asBoolean()).isFalse();
+        HttpResult detailBeforeApplication = exchange(
+                HttpMethod.GET, "/groups/" + groupId, applicant.token(), null
+        );
+        assertThat(detailBeforeApplication.status()).isEqualTo(HttpStatus.OK);
+        assertThat(json(detailBeforeApplication).path("result").path("permissions")
+                .path("canApply").asBoolean()).isTrue();
         assertError(
                 exchange(
                         HttpMethod.POST,
@@ -167,6 +204,13 @@ class GroupAuthorizationE2ETest {
                 "{\"content\":\"첫 지원\"}"
         );
         assertThat(application.status()).isEqualTo(HttpStatus.OK);
+        HttpResult pendingDetail = exchange(
+                HttpMethod.GET, "/groups/" + groupId, applicant.token(), null
+        );
+        assertThat(json(pendingDetail).path("result").path("myApplicationStatus").asText())
+                .isEqualTo("PENDING");
+        assertThat(json(pendingDetail).path("result").path("permissions")
+                .path("canApply").asBoolean()).isFalse();
         assertError(
                 exchange(
                         HttpMethod.POST,
@@ -216,6 +260,17 @@ class GroupAuthorizationE2ETest {
                 leader.token(),
                 null
         ).status()).isEqualTo(HttpStatus.OK);
+        HttpResult memberList = exchange(
+                HttpMethod.GET,
+                "/groups/" + groupId + "/members",
+                applicant.token(),
+                null
+        );
+        assertThat(memberList.status()).isEqualTo(HttpStatus.OK);
+        assertThat(findByMemberId(
+                json(memberList).path("result"),
+                applicant.id()
+        ).path("name").asText()).isEqualTo("흐름지원자");
 
         assertError(
                 exchange(
@@ -268,6 +323,20 @@ class GroupAuthorizationE2ETest {
                 admin.token(),
                 null
         ).status()).isEqualTo(HttpStatus.OK);
+        HttpResult adminDetail = exchange(
+                HttpMethod.GET,
+                "/groups/" + groupId,
+                admin.token(),
+                null
+        );
+        assertThat(json(adminDetail).path("result").path("permissions")
+                .path("canEditGroup").asBoolean()).isTrue();
+        assertThat(exchange(
+                HttpMethod.GET,
+                "/groups/" + groupId + "/members",
+                admin.token(),
+                null
+        ).status()).isEqualTo(HttpStatus.OK);
         assertThat(exchange(
                 HttpMethod.PUT,
                 "/groups/" + groupId + "/detail",
@@ -312,6 +381,7 @@ class GroupAuthorizationE2ETest {
         assertThat(paths.path("/groups").has("get")).isTrue();
         assertThat(paths.path("/groups").has("post")).isTrue();
         assertThat(paths.path("/groups/{groupId}").has("get")).isTrue();
+        assertThat(paths.path("/groups/{groupId}/members").has("get")).isTrue();
         assertThat(paths.path("/groups/{groupId}/applications/{applicationId}/accept").has("put"))
                 .isTrue();
         assertThat(paths.has("/admin")).isFalse();
@@ -327,6 +397,32 @@ class GroupAuthorizationE2ETest {
                 .path("content").has(MediaType.APPLICATION_JSON_VALUE)).isTrue();
         assertThat(paths.path("/groups/{groupId}").path("get").path("responses")
                 .path("200").path("content").has(MediaType.APPLICATION_JSON_VALUE)).isTrue();
+        JsonNode memberResponses = paths.path("/groups/{groupId}/members")
+                .path("get")
+                .path("responses");
+        assertThat(memberResponses.has("400")).isTrue();
+        assertThat(memberResponses.path("400").toString()).contains("InvalidInputValue");
+        assertThat(memberResponses.has("403")).isTrue();
+        assertThat(memberResponses.has("404")).isTrue();
+
+        JsonNode schemas = document.path("components").path("schemas");
+        assertThat(schemas.path("GroupSummaryResponse").path("properties").toString())
+                .contains(
+                        "groupId", "type", "name", "currentMemberCount", "capacity",
+                        "leaderName", "recruitmentStatus", "isMember", "isLeader"
+                );
+        assertThat(schemas.path("GroupDetailResponse").path("properties").toString())
+                .contains("myApplicationStatus", "permissions");
+        assertThat(schemas.path("GroupPermissionsResponse").path("properties").toString())
+                .contains(
+                        "canViewSettings", "canEditGroup", "canManageMembers",
+                        "canViewApplications", "canReviewApplications",
+                        "canDeleteGroup", "canApply"
+                );
+        assertThat(schemas.path("GroupMemberIdentityResponse").path("properties").toString())
+                .contains("memberId", "name", "leader");
+        assertThat(schemas.path("CreateGroupRequest").toString())
+                .contains("서울 기준 00:00:00", "서울 기준 23:59:59.999999");
 
         JsonNode examples = document.path("components").path("examples");
         assertThat(examples.has("GroupNotFound")).isTrue();
@@ -366,6 +462,24 @@ class GroupAuthorizationE2ETest {
                 requester.token(),
                 null
         )).path("result").get(0).path("applicationId").asLong();
+    }
+
+    private JsonNode findByGroupId(JsonNode groups, long groupId) {
+        for (JsonNode group : groups) {
+            if (group.path("groupId").asLong() == groupId) {
+                return group;
+            }
+        }
+        throw new AssertionError("groupId=" + groupId + "인 그룹 응답을 찾을 수 없습니다.");
+    }
+
+    private JsonNode findByMemberId(JsonNode members, long memberId) {
+        for (JsonNode member : members) {
+            if (member.path("memberId").asLong() == memberId) {
+                return member;
+            }
+        }
+        throw new AssertionError("memberId=" + memberId + "인 그룹원 응답을 찾을 수 없습니다.");
     }
 
     private AuthenticatedMember createMember(boolean admin, String name) {

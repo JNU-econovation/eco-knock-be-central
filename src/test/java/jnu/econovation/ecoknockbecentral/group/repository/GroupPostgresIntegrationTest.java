@@ -28,6 +28,7 @@ import jnu.econovation.ecoknockbecentral.group.service.GroupApplicationService;
 import jnu.econovation.ecoknockbecentral.member.model.entity.Member;
 import jnu.econovation.ecoknockbecentral.member.model.vo.ActiveStatus;
 import jnu.econovation.ecoknockbecentral.member.model.vo.Cohort;
+import jnu.econovation.ecoknockbecentral.member.model.vo.Role;
 import jnu.econovation.ecoknockbecentral.member.repository.MemberRepository;
 import jnu.econovation.ecoknockbecentral.member.service.MemberService;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,15 @@ class GroupPostgresIntegrationTest {
         assertThat(result).extracting(response -> response.groupId())
                 .containsExactly(first.getId(), second.getId());
         assertThat(result).allMatch(response -> response.isLeader());
+        assertThat(result).allSatisfy(response -> {
+            assertThat(response.type()).isEqualTo(GroupType.STUDY);
+            assertThat(response.currentMemberCount()).isEqualTo(1);
+            assertThat(response.capacity()).isEqualTo(5);
+            assertThat(response.leaderName()).isEqualTo("가입자");
+            assertThat(response.recruitmentStatus())
+                    .isEqualTo(RecruitmentStatus.ALWAYS_RECRUITING);
+            assertThat(response.isMember()).isTrue();
+        });
     }
 
     @Test
@@ -117,13 +127,19 @@ class GroupPostgresIntegrationTest {
         groupMemberRepository.saveAndFlush(GroupMember.member(group, member));
         entityManager.clear();
 
-        var result = groupService.browse(new BrowseGroupsRequest(false, GroupSort.NAME_ASC));
+        var result = groupService.browse(
+                new BrowseGroupsRequest(false, GroupSort.NAME_ASC),
+                member.getId()
+        );
 
         assertThat(result).filteredOn(response -> response.groupId().equals(group.getId()))
                 .singleElement()
                 .satisfies(response -> {
                     assertThat(response.currentMemberCount()).isEqualTo(2);
                     assertThat(response.leaderName()).isEqualTo("집계리더");
+                    assertThat(response.type()).isEqualTo(GroupType.STUDY);
+                    assertThat(response.isMember()).isTrue();
+                    assertThat(response.isLeader()).isFalse();
                 });
     }
 
@@ -139,7 +155,9 @@ class GroupPostgresIntegrationTest {
         entityManager.flush();
         entityManager.clear();
 
-        List<GroupBrowseRow> rows = groupRepository.findAllForBrowse(true, GroupSort.NAME_ASC, now);
+        List<GroupBrowseRow> rows = groupRepository.findAllForBrowse(
+                true, GroupSort.NAME_ASC, now, leader.getId()
+        );
 
         assertThat(rows).extracting(row -> row.group().getId())
                 .contains(upcoming.getId(), startsNow.getId(), endsNow.getId())
@@ -175,16 +193,19 @@ class GroupPostgresIntegrationTest {
         entityManager.clear();
 
         assertIds(
-                groupRepository.findAllForBrowse(false, GroupSort.NAME_ASC, now),
+                groupRepository.findAllForBrowse(
+                        false, GroupSort.NAME_ASC, now, leader.getId()),
                 activeLater, activeSoon, upcomingLater, upcomingSoon, always, closed,
                 activeTieFirst, activeTieSecond
         );
         assertIds(
-                groupRepository.findAllForBrowse(false, GroupSort.NAME_DESC, now),
+                groupRepository.findAllForBrowse(
+                        false, GroupSort.NAME_DESC, now, leader.getId()),
                 activeTieSecond, activeTieFirst, closed, always, upcomingSoon, upcomingLater,
                 activeSoon, activeLater
         );
-        assertThat(groupRepository.findAllForBrowse(false, GroupSort.RECENT, now))
+        assertThat(groupRepository.findAllForBrowse(
+                false, GroupSort.RECENT, now, leader.getId()))
                 .extracting(row -> row.group().getId())
                 .containsSubsequence(
                         activeLater.getId(), activeSoon.getId(), upcomingLater.getId(),
@@ -192,7 +213,8 @@ class GroupPostgresIntegrationTest {
                         activeTieFirst.getId(), activeTieSecond.getId()
                 );
         assertIds(
-                groupRepository.findAllForBrowse(false, GroupSort.DEADLINE_ASC, now),
+                groupRepository.findAllForBrowse(
+                        false, GroupSort.DEADLINE_ASC, now, leader.getId()),
                 activeSoon, activeTieFirst, activeTieSecond, activeLater,
                 upcomingSoon, upcomingLater, always, closed
         );
@@ -207,8 +229,8 @@ class GroupPostgresIntegrationTest {
         groupMemberRepository.saveAndFlush(GroupMember.member(group, member));
         entityManager.clear();
 
-        var leaderView = groupService.getDetail(group.getId(), leader.getId());
-        var outsiderView = groupService.getDetail(group.getId(), outsider.getId());
+        var leaderView = groupService.getDetail(group.getId(), leader.getId(), Role.USER);
+        var outsiderView = groupService.getDetail(group.getId(), outsider.getId(), Role.USER);
 
         assertThat(leaderView.currentMemberCount()).isEqualTo(2);
         assertThat(leaderView.leaderName()).isEqualTo("상세리더");
@@ -218,9 +240,37 @@ class GroupPostgresIntegrationTest {
         assertThat(leaderView.isLeader()).isTrue();
         assertThat(outsiderView.isMember()).isFalse();
         assertThat(outsiderView.isLeader()).isFalse();
-        assertThatThrownBy(() -> groupService.getDetail(Long.MAX_VALUE, outsider.getId()))
+        assertThat(leaderView.permissions().canReviewApplications()).isTrue();
+        assertThat(leaderView.permissions().canApply()).isFalse();
+        assertThat(outsiderView.permissions().canApply()).isTrue();
+        assertThatThrownBy(() -> groupService.getDetail(
+                Long.MAX_VALUE, outsider.getId(), Role.USER))
                 .isInstanceOfSatisfying(GroupClientException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GROUP_NOT_FOUND));
+    }
+
+    @Test
+    void memberIdentityListPreservesIdsForDuplicateNamesAndChecksAccess() {
+        Member leader = saveMember(301L, "동명이인");
+        Member member = saveMember(302L, "동명이인");
+        Member outsider = saveMember(303L, "외부인");
+        Member admin = saveMember(304L, "관리자");
+        admin.promoteToAdmin();
+        memberRepository.flush();
+        Group group = saveAlwaysGroup("식별목록", 5, leader);
+        groupMemberRepository.saveAndFlush(GroupMember.member(group, member));
+        entityManager.clear();
+
+        assertThat(groupService.getMembers(group.getId(), member.getId(), Role.USER))
+                .extracting(response -> response.memberId())
+                .containsExactlyInAnyOrder(leader.getId(), member.getId());
+        assertThat(groupService.getMembers(group.getId(), admin.getId(), Role.ADMIN))
+                .extracting(response -> response.name())
+                .containsOnly("동명이인");
+        assertThatThrownBy(() -> groupService.getMembers(
+                group.getId(), outsider.getId(), Role.USER
+        )).isInstanceOfSatisfying(GroupClientException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GROUP_ACCESS_DENIED));
     }
 
     @Test
