@@ -13,12 +13,15 @@ import jnu.econovation.ecoknockbecentral.group.dto.request.BrowseGroupsRequest;
 import jnu.econovation.ecoknockbecentral.group.dto.request.CreateGroupRequest;
 import jnu.econovation.ecoknockbecentral.group.exception.GroupClientException;
 import jnu.econovation.ecoknockbecentral.group.model.entity.Group;
+import jnu.econovation.ecoknockbecentral.group.model.entity.GroupApplication;
 import jnu.econovation.ecoknockbecentral.group.model.entity.GroupMember;
+import jnu.econovation.ecoknockbecentral.group.model.vo.GroupApplicationStatus;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupSort;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupType;
 import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentMode;
 import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentStatus;
 import jnu.econovation.ecoknockbecentral.group.service.GroupService;
+import jnu.econovation.ecoknockbecentral.group.service.GroupApplicationService;
 import jnu.econovation.ecoknockbecentral.member.model.entity.Member;
 import jnu.econovation.ecoknockbecentral.member.model.vo.ActiveStatus;
 import jnu.econovation.ecoknockbecentral.member.model.vo.Cohort;
@@ -46,19 +49,25 @@ class GroupPostgresIntegrationTest {
     private final GroupMemberRepository groupMemberRepository;
     private final MemberRepository memberRepository;
     private final GroupService groupService;
+    private final GroupApplicationRepository groupApplicationRepository;
+    private final GroupApplicationService groupApplicationService;
     private final EntityManager entityManager;
 
     GroupPostgresIntegrationTest(
             GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
+            GroupApplicationRepository groupApplicationRepository,
             MemberRepository memberRepository,
             GroupService groupService,
+            GroupApplicationService groupApplicationService,
             EntityManager entityManager
     ) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.groupApplicationRepository = groupApplicationRepository;
         this.memberRepository = memberRepository;
         this.groupService = groupService;
+        this.groupApplicationService = groupApplicationService;
         this.entityManager = entityManager;
     }
 
@@ -211,6 +220,77 @@ class GroupPostgresIntegrationTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.GROUP_NOT_FOUND));
     }
 
+    @Test
+    void applicationLifecycleKeepsHistoryAndExposesOnlyPendingRows() {
+        Member leader = saveMember(110L, "지원리더");
+        Member applicant = saveMember(111L, "지원자");
+        Group group = saveAlwaysGroup("지원통합", 3, leader);
+
+        groupApplicationService.create(group.getId(), applicant.getId(), "  첫 지원  ");
+        GroupApplication first = groupApplicationRepository
+                .findAllByGroupIdAndStatusWithApplicant(
+                        group.getId(),
+                        GroupApplicationStatus.PENDING
+                )
+                .getFirst();
+        groupApplicationService.reject(group.getId(), first.getId(), leader.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(groupApplicationService.getPendingApplications(
+                group.getId(),
+                leader.getId()
+        )).isEmpty();
+        assertThatThrownBy(() -> groupApplicationService.getPendingApplication(
+                group.getId(),
+                first.getId(),
+                leader.getId()
+        )).isInstanceOfSatisfying(GroupClientException.class, exception ->
+                assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.GROUP_APPLICATION_NOT_FOUND));
+
+        groupApplicationService.create(group.getId(), applicant.getId(), "재지원");
+        List<GroupApplication> all = groupApplicationRepository.findAll();
+        assertThat(all).filteredOn(application ->
+                        application.getGroup().getId().equals(group.getId())
+                                && application.getApplicant().getId().equals(applicant.getId()))
+                .extracting(GroupApplication::getStatus)
+                .containsExactlyInAnyOrder(
+                        GroupApplicationStatus.REJECTED,
+                        GroupApplicationStatus.PENDING
+                );
+    }
+
+    @Test
+    void acceptAddsMemberAndPreventsSecondProcessing() {
+        Member leader = saveMember(112L, "수락리더");
+        Member applicant = saveMember(113L, "수락지원자");
+        Group group = saveAlwaysGroup("수락통합", 2, leader);
+        groupApplicationService.create(group.getId(), applicant.getId(), "지원");
+        GroupApplication application = groupApplicationRepository
+                .findAllByGroupIdAndStatusWithApplicant(
+                        group.getId(),
+                        GroupApplicationStatus.PENDING
+                )
+                .getFirst();
+
+        groupApplicationService.accept(group.getId(), application.getId(), leader.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(groupMemberRepository.existsByGroupIdAndMemberId(
+                group.getId(),
+                applicant.getId()
+        )).isTrue();
+        assertThatThrownBy(() -> groupApplicationService.accept(
+                group.getId(),
+                application.getId(),
+                leader.getId()
+        )).isInstanceOfSatisfying(GroupClientException.class, exception ->
+                assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.GROUP_APPLICATION_ALREADY_PROCESSED));
+    }
+
     private Member saveMember(Long ssoId, String name) {
         return memberRepository.saveAndFlush(Member.builder()
                 .ssoMemberId(ssoId)
@@ -263,6 +343,7 @@ class GroupPostgresIntegrationTest {
             AES256Util.class,
             StringEncryptConverter.class,
             GroupService.class,
+            GroupApplicationService.class,
             MemberService.class
     })
     static class TestApplication {
