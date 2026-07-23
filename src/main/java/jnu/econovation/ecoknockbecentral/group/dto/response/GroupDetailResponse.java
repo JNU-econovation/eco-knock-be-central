@@ -3,6 +3,7 @@ package jnu.econovation.ecoknockbecentral.group.dto.response;
 import java.time.Instant;
 import java.util.List;
 import jnu.econovation.ecoknockbecentral.group.model.vo.GroupType;
+import jnu.econovation.ecoknockbecentral.group.model.vo.MyGroupApplicationStatus;
 import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentMode;
 import jnu.econovation.ecoknockbecentral.group.model.vo.RecruitmentStatus;
 
@@ -20,6 +21,8 @@ public record GroupDetailResponse(
         String leaderName,
         List<GroupMemberResponse> members,
         boolean isMember,
-        boolean isLeader
+        boolean isLeader,
+        MyGroupApplicationStatus myApplicationStatus,
+        GroupPermissionsResponse permissions
 ) {
 }

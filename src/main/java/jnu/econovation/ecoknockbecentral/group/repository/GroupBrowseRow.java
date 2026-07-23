@@ -5,6 +5,8 @@ import jnu.econovation.ecoknockbecentral.group.model.entity.Group;
 public record GroupBrowseRow(
         Group group,
         long currentMemberCount,
-        String leaderName
+        String leaderName,
+        boolean isMember,
+        boolean isLeader
 ) {
 }
