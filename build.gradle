@@ -16,6 +16,7 @@ def grpcVersion = '1.80.0'
 def protobufVersion = '4.34.1'
 def springdocVersion = '3.0.3'
 def web3jVersion = '5.0.3'
+def querydslVersion = '7.4.0'
 
 group = 'jnu.econovation'
 version = '0.0.1-SNAPSHOT'
@@ -43,12 +44,19 @@ dependencies {
 
     //spring
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-scalar:${springdocVersion}"
+
+    //QueryDSL
+    implementation "io.github.openfeign.querydsl:querydsl-jpa:${querydslVersion}"
+    annotationProcessor "io.github.openfeign.querydsl:querydsl-apt:${querydslVersion}:jpa"
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
 
     //spring-security
     implementation 'org.springframework.boot:spring-boot-starter-security'
