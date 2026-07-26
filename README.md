@@ -26,27 +26,9 @@ SSO 회원별 서버 관리형 EVM 지갑을 생성하고, 암호화한 개인�
 - [gRPC](#grpc)
 - [제한사항](#제한사항)
 
-## 시스템 구성
+## 아키텍처
+<img width="8141" height="5490" alt="eco-knock 아키텍처" src="https://github.com/user-attachments/assets/b23d4de0-3fae-4a5f-884e-0f27bc3a13d6" />
 
-```mermaid
-flowchart LR
-    Sensor[센서·공기청정기 gRPC 서버]
-    App[Eco Knock 중앙 백엔드]
-    DB[(PostgreSQL)]
-    Redis[(Redis)]
-    AI[AI 서버]
-    Monitor[Prometheus / Grafana]
-    Client[웹 클라이언트]
-    Admin[관리자]
-
-    Sensor --> App
-    Client --> App
-    Admin --> App
-    App --> DB
-    App --> Redis
-    App --> AI
-    App --> Monitor
-```
 
 ## 현재 구현 범위
 
