@@ -141,7 +141,22 @@ protobuf {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'performance'
+    }
+}
+
+tasks.register('performanceTest', Test) {
+    description = 'Runs tagged air-quality performance benchmarks.'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    shouldRunAfter tasks.named('test')
+
+    useJUnitPlatform {
+        includeTags 'performance'
+    }
 }
 
 tasks.named('compileKotlin') {
