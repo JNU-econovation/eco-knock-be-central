@@ -1,11 +1,18 @@
 package jnu.econovation.ecoknockbecentral.airquality.scheduler
 
 import jnu.econovation.ecoknockbecentral.common.metrics.ApplicationMetrics
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
 @Component
+@ConditionalOnProperty(
+    prefix = "air-quality.scheduler",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = true,
+)
 class AirQualityScheduler(
     private val jdbcTemplate: JdbcTemplate,
     private val metrics: ApplicationMetrics,

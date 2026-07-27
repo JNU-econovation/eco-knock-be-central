@@ -346,6 +346,23 @@ Flyway는 `classpath:db/migration` 아래 SQL을 버전 순서대로 실행합�
 
 JPA 설정은 `ddl-auto: validate`이므로 애플리케이션 시작 시 엔티티와 DB 스키마가 일치하는지 검증합니다.
 
+### 공기질 Materialized View 성능 실험
+
+공기질 조회 전략은 기본 테스트와 분리한 수동 성능 실험으로 비교합니다.
+
+```bash
+./gradlew test
+./gradlew performanceTest
+```
+
+- `performanceTest`는 `performance` 태그만 실행하며 기본 `test`에서는 제외됩니다.
+- 로컬 PostgreSQL의 2099년 합성 초 단위 데이터 약 259만 건을 사용하고, `1m`부터 `1d`까지 모든 해상도에서 30개 포인트를 반환합니다.
+- 각 해상도에서 MV와 원본 직접 집계 API의 `result.content` 전체를 먼저 비교합니다. 포인트 순서·시각·품질·sample count는 정확히 일치해야 하며 실수값은 `1e-9` 이내만 허용합니다.
+- warm-cache 조건에서 20회 워밍업 뒤, 순서를 고정 시드로 섞은 100회 paired 측정으로 p50·p95·p99·min·max와 `RAW / MV p50`을 출력합니다. 측정에는 HTTP 응답 본문 수신·DTO 생성·JSON 직렬화가 포함됩니다.
+- 쿼리 측정이 끝난 뒤 MV별 `REFRESH MATERIALIZED VIEW CONCURRENTLY` 시간과 `pg_total_relation_size`를 별도로 출력합니다. 이 비용은 조회 응답시간에 포함하지 않습니다.
+
+따라서 결과는 **현재 구현된 Spring Data JPA 기반 MV API 경로와 JdbcTemplate 기반 원본 집계 API 경로를 로컬 warm-cache 환경에서 비교한 값**입니다. 운영 환경 전체의 성능, 동시 요청 처리량, 사용자 체감 성능을 일반화하지 않습니다. MV는 조회 시간을 줄이는 대신 refresh 시간·저장 공간·갱신 직전 데이터의 stale 가능성을 비용으로 가집니다. 성능 실험 중에는 `air-quality.scheduler.enabled=false`로 주기적 MV refresh를 비활성화해 측정에 섞이지 않게 합니다.
+
 ## 주요 데이터 흐름
 
 ### 공기질 수집
