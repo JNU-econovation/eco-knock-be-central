@@ -81,6 +81,10 @@ wallet:
     scheduler:
       enabled: ${WALLET_RANKING_SCHEDULER_ENABLED:false}
 
+air-quality:
+  scheduler:
+    enabled: ${AIR_QUALITY_SCHEDULER_ENABLED:true}
+
 ai-server:
   base-url: ${AI_SERVER_HOST}
   timeout: 30s
