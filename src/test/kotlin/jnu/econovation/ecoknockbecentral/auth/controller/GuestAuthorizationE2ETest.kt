@@ -2,7 +2,7 @@ package jnu.econovation.ecoknockbecentral.auth.controller
 
 import jnu.econovation.ecoknockbecentral.EcoKnockBeCentralApplication
 import jnu.econovation.ecoknockbecentral.auth.constant.AuthConstant.ACCESS_TOKEN
-import jnu.econovation.ecoknockbecentral.airquality.service.AirQualityHistorySettingService
+import jnu.econovation.ecoknockbecentral.airquality.service.AirQualityCustomizeService
 import jnu.econovation.ecoknockbecentral.common.security.util.JwtUtil
 import jnu.econovation.ecoknockbecentral.member.dto.MemberInfoDTO
 import jnu.econovation.ecoknockbecentral.member.model.entity.Member
@@ -34,7 +34,7 @@ class GuestAuthorizationE2ETest(
     private val memberRepository: MemberRepository,
     private val jwtUtil: JwtUtil,
     private val overviewService: OverviewService,
-    private val airQualityHistorySettingService: AirQualityHistorySettingService,
+    private val airQualityCustomizeService: AirQualityCustomizeService,
     private val jdbcTemplate: JdbcTemplate,
 ) {
     private val memberIds = mutableListOf<Long>()
@@ -110,7 +110,7 @@ class GuestAuthorizationE2ETest(
         val member = memberRepository.saveAndFlush(Member.createGuest(Instant.now().plus(Duration.ofHours(1))))
         memberIds += member.id
         overviewService.initializeOverview(member.id)
-        airQualityHistorySettingService.initialize(member.id)
+        airQualityCustomizeService.initialize(member.id)
 
         return jwtUtil.generateAccessToken(MemberInfoDTO.from(member), Duration.ofHours(1))
     }
@@ -128,7 +128,7 @@ class GuestAuthorizationE2ETest(
         memberRepository.saveAndFlush(member)
         memberIds += member.id
         overviewService.initializeOverview(member.id)
-        airQualityHistorySettingService.initialize(member.id)
+        airQualityCustomizeService.initialize(member.id)
 
         return jwtUtil.generateAccessToken(MemberInfoDTO.from(member), Duration.ofHours(1))
     }
