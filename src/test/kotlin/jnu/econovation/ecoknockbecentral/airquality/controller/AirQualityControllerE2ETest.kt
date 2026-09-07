@@ -55,17 +55,33 @@ class AirQualityControllerE2ETest(
     fun setUp() {
         deleteTestData()
 
-        insertAirQuality("2099-01-01T00:00:10Z", 10, 40.0, 20.0, 500.0, 0.10, 1)
-        insertAirQuality("2099-01-01T00:02:10Z", 20, 60.0, 22.0, 700.0, 0.30, 2)
-        insertAirQuality("2099-01-01T00:06:10Z", 30, 50.0, 24.0, 900.0, 0.50, 3)
-
-        jdbcTemplate.execute("refresh materialized view air_quality_5m_mv")
+        insertFiveMinuteAggregate(
+            bucketStart = "2099-01-01T00:00:00Z",
+            sumPm25 = 30L,
+            maxPm25 = 20,
+            minPm25 = 10,
+            sumHumidity = 100.0,
+            sumTemperature = 42.0,
+            sumEco2 = 1200.0,
+            sumBvoc = 0.40,
+            sampleCount = 2L,
+        )
+        insertFiveMinuteAggregate(
+            bucketStart = "2099-01-01T00:05:00Z",
+            sumPm25 = 30L,
+            maxPm25 = 30,
+            minPm25 = 30,
+            sumHumidity = 50.0,
+            sumTemperature = 24.0,
+            sumEco2 = 900.0,
+            sumBvoc = 0.50,
+            sampleCount = 1L,
+        )
     }
 
     @AfterEach
     fun tearDown() {
         deleteTestData()
-        jdbcTemplate.execute("refresh materialized view air_quality_5m_mv")
     }
 
     @Test
@@ -196,48 +212,54 @@ class AirQualityControllerE2ETest(
     private fun deleteTestData() {
         jdbcTemplate.update(
             """
-            delete from air_quality
-            where sensor_measured_at >= ?
-              and sensor_measured_at < ?
+            delete from air_quality_5m_aggregate
+            where bucket_start >= ?
+              and bucket_start < ?
             """.trimIndent(),
             Timestamp.from(TEST_FROM),
             Timestamp.from(TEST_TO)
         )
     }
 
-    private fun insertAirQuality(
-        measuredAt: String,
-        pm25: Int,
-        humidity: Double,
-        temperature: Double,
-        eco2: Double,
-        bvoc: Double,
-        accuracy: Int,
+    private fun insertFiveMinuteAggregate(
+        bucketStart: String,
+        sumPm25: Long,
+        maxPm25: Int,
+        minPm25: Int,
+        sumHumidity: Double,
+        sumTemperature: Double,
+        sumEco2: Double,
+        sumBvoc: Double,
+        sampleCount: Long,
     ) {
-        val timestamp = Timestamp.from(Instant.parse(measuredAt))
+        val start = Instant.parse(bucketStart)
 
         jdbcTemplate.update(
             """
-            insert into air_quality (
-                sensor_measured_at,
-                air_purifier_measured_at,
-                pm25,
-                humidity,
-                temperature,
-                estimated_eco2ppm,
-                estimated_bvocppm,
-                accuracy
+            insert into air_quality_5m_aggregate (
+                bucket_start,
+                bucket_end,
+                sum_pm25,
+                max_pm25,
+                min_pm25,
+                sum_humidity,
+                sum_temperature,
+                sum_eco2,
+                sum_bvoc,
+                sample_count
             )
-            values (?, ?, ?, ?, ?, ?, ?, ?)
+            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """.trimIndent(),
-            timestamp,
-            timestamp,
-            pm25,
-            humidity,
-            temperature,
-            eco2,
-            bvoc,
-            accuracy
+            Timestamp.from(start),
+            Timestamp.from(start.plusSeconds(300)),
+            sumPm25,
+            maxPm25,
+            minPm25,
+            sumHumidity,
+            sumTemperature,
+            sumEco2,
+            sumBvoc,
+            sampleCount,
         )
     }
 
