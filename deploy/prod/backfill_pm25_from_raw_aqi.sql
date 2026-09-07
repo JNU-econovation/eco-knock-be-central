@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 
--- CALL과 각 동시 물질화 뷰 갱신이 자체 트랜잭션을 관리할 수 있도록 명시적 트랜잭션 밖에서 psql로 실행한다.
+-- CALL은 자체 트랜잭션을 관리하므로 명시적 트랜잭션 밖에서 psql로 실행한다.
 -- 이 스크립트는 의도적으로 Flyway 마이그레이션에 포함하지 않는다.
 SELECT coalesce(max(id), 0) AS target_max_id
 FROM air_quality
@@ -83,10 +83,50 @@ WHERE id <= :target_max_id
   AND (raw_air_purifier ->> 'aqi')::numeric BETWEEN -2147483648 AND 2147483647
   AND pm25 IS DISTINCT FROM (raw_air_purifier ->> 'aqi')::integer;
 
-\echo 공기질 물질화 뷰 갱신
-REFRESH MATERIALIZED VIEW CONCURRENTLY air_quality_1m_mv;
-REFRESH MATERIALIZED VIEW CONCURRENTLY air_quality_5m_mv;
-REFRESH MATERIALIZED VIEW CONCURRENTLY air_quality_15m_mv;
-REFRESH MATERIALIZED VIEW CONCURRENTLY air_quality_1h_mv;
-REFRESH MATERIALIZED VIEW CONCURRENTLY air_quality_4h_mv;
-REFRESH MATERIALIZED VIEW CONCURRENTLY air_quality_1d_mv;
+\echo 공기질 aggregate 재구축
+BEGIN;
+TRUNCATE TABLE
+    air_quality_1m_aggregate,
+    air_quality_5m_aggregate,
+    air_quality_15m_aggregate,
+    air_quality_1h_aggregate,
+    air_quality_4h_aggregate,
+    air_quality_1d_aggregate;
+
+INSERT INTO air_quality_1m_aggregate
+SELECT date_bin('1 minute', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00'),
+       date_bin('1 minute', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00') + INTERVAL '1 minute',
+       SUM(pm25), MAX(pm25), MIN(pm25), SUM(humidity), SUM(temperature), SUM(estimated_eco2ppm), SUM(estimated_bvocppm), COUNT(*)
+FROM air_quality GROUP BY 1, 2;
+
+INSERT INTO air_quality_5m_aggregate
+SELECT date_bin('5 minutes', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00'),
+       date_bin('5 minutes', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00') + INTERVAL '5 minutes',
+       SUM(pm25), MAX(pm25), MIN(pm25), SUM(humidity), SUM(temperature), SUM(estimated_eco2ppm), SUM(estimated_bvocppm), COUNT(*)
+FROM air_quality GROUP BY 1, 2;
+
+INSERT INTO air_quality_15m_aggregate
+SELECT date_bin('15 minutes', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00'),
+       date_bin('15 minutes', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00') + INTERVAL '15 minutes',
+       SUM(pm25), MAX(pm25), MIN(pm25), SUM(humidity), SUM(temperature), SUM(estimated_eco2ppm), SUM(estimated_bvocppm), COUNT(*)
+FROM air_quality GROUP BY 1, 2;
+
+INSERT INTO air_quality_1h_aggregate
+SELECT date_bin('1 hour', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00'),
+       date_bin('1 hour', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00') + INTERVAL '1 hour',
+       SUM(pm25), MAX(pm25), MIN(pm25), SUM(humidity), SUM(temperature), SUM(estimated_eco2ppm), SUM(estimated_bvocppm), COUNT(*)
+FROM air_quality GROUP BY 1, 2;
+
+INSERT INTO air_quality_4h_aggregate
+SELECT date_bin('4 hours', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00'),
+       date_bin('4 hours', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00') + INTERVAL '4 hours',
+       SUM(pm25), MAX(pm25), MIN(pm25), SUM(humidity), SUM(temperature), SUM(estimated_eco2ppm), SUM(estimated_bvocppm), COUNT(*)
+FROM air_quality GROUP BY 1, 2;
+
+INSERT INTO air_quality_1d_aggregate
+SELECT date_bin('1 day', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00'),
+       date_bin('1 day', sensor_measured_at, TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00') + INTERVAL '1 day',
+       SUM(pm25), MAX(pm25), MIN(pm25), SUM(humidity), SUM(temperature), SUM(estimated_eco2ppm), SUM(estimated_bvocppm), COUNT(*)
+FROM air_quality GROUP BY 1, 2;
+
+COMMIT;
