@@ -4,7 +4,7 @@ import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.UpdateAirQu
 import jnu.econovation.ecoknockbecentral.airquality.dto.rest.response.GetAirQualityHistorySettingResponse
 import jnu.econovation.ecoknockbecentral.airquality.model.entity.AirQualityHistorySetting
 import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution
-import jnu.econovation.ecoknockbecentral.airquality.repository.AirQualityHistorySettingRepository
+import jnu.econovation.ecoknockbecentral.airquality.repository.AirQualityCustomizeRepository
 import jnu.econovation.ecoknockbecentral.common.exception.server.InternalServerException
 import jnu.econovation.ecoknockbecentral.member.dto.MemberInfoDTO
 import jnu.econovation.ecoknockbecentral.member.service.MemberService
@@ -13,9 +13,9 @@ import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class AirQualityHistorySettingService(
+class AirQualityCustomizeService(
     private val memberService: MemberService,
-    private val repository: AirQualityHistorySettingRepository,
+    private val repository: AirQualityCustomizeRepository,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun initialize(memberId: Long) {

@@ -3,7 +3,7 @@ package jnu.econovation.ecoknockbecentral.airquality.service
 import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.UpdateAirQualityHistorySettingRequest
 import jnu.econovation.ecoknockbecentral.airquality.model.entity.AirQualityHistorySetting
 import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution
-import jnu.econovation.ecoknockbecentral.airquality.repository.AirQualityHistorySettingRepository
+import jnu.econovation.ecoknockbecentral.airquality.repository.AirQualityCustomizeRepository
 import jnu.econovation.ecoknockbecentral.member.dto.MemberInfoDTO
 import jnu.econovation.ecoknockbecentral.member.model.entity.Member
 import jnu.econovation.ecoknockbecentral.member.model.vo.Role
@@ -15,10 +15,10 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
-class AirQualityHistorySettingServiceTest {
+class AirQualityCustomizeServiceTest {
     private val memberService = mock<MemberService>()
-    private val repository = mock<AirQualityHistorySettingRepository>()
-    private val service = AirQualityHistorySettingService(memberService, repository)
+    private val repository = mock<AirQualityCustomizeRepository>()
+    private val service = AirQualityCustomizeService(memberService, repository)
     private val memberInfo = MemberInfoDTO(id = 1L, ssoMemberId = null, role = Role.USER, cohort = null, name = "테스트", status = null)
 
     @Test
