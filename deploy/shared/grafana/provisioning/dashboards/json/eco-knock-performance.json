@@ -79,9 +79,9 @@
     },
     {
       "id": 10,
-      "title": "Materialized view refresh duration",
+      "title": "Air quality aggregation duration",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (view, outcome) (rate(eco_knock_materialized_view_refresh_seconds_sum{job=\"eco-knock-app\"}[5m])) / sum by (view, outcome) (rate(eco_knock_materialized_view_refresh_seconds_count{job=\"eco-knock-app\"}[5m]))", "legendFormat": "{{view}} {{outcome}}" }],
+      "targets": [{ "expr": "sum by (resolution, outcome) (rate(eco_knock_air_quality_aggregation_seconds_sum{job=\"eco-knock-app\"}[5m])) / sum by (resolution, outcome) (rate(eco_knock_air_quality_aggregation_seconds_count{job=\"eco-knock-app\"}[5m]))", "legendFormat": "{{resolution}} {{outcome}}" }],
       "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 }
     },

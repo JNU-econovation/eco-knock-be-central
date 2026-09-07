@@ -78,13 +78,13 @@ class AirQualityQueryPerformanceTest(
         private const val PAIR_ORDER_SEED = 20_260_727L
         private const val NUMERIC_TOLERANCE = 1e-9
 
-        private val MATERIALIZED_VIEWS = listOf(
-            "air_quality_1m_mv",
-            "air_quality_5m_mv",
-            "air_quality_15m_mv",
-            "air_quality_1h_mv",
-            "air_quality_4h_mv",
-            "air_quality_1d_mv",
+        private val AGGREGATE_TABLES = listOf(
+            AggregateTable("air_quality_1m_aggregate", "1 minute"),
+            AggregateTable("air_quality_5m_aggregate", "5 minutes"),
+            AggregateTable("air_quality_15m_aggregate", "15 minutes"),
+            AggregateTable("air_quality_1h_aggregate", "1 hour"),
+            AggregateTable("air_quality_4h_aggregate", "4 hours"),
+            AggregateTable("air_quality_1d_aggregate", "1 day"),
         )
 
         private const val INSERT_BENCHMARK_DATA_SQL = """
@@ -123,26 +123,26 @@ class AirQualityQueryPerformanceTest(
     @BeforeEach
     fun setUp() {
         deleteBenchmarkData()
-        refreshMaterializedViews()
+        rebuildAggregateTables()
 
         jdbcTemplate.update(
             INSERT_BENCHMARK_DATA_SQL,
             TEST_FROM_TIMESTAMP,
             TEST_TO_TIMESTAMP,
         )
-        refreshMaterializedViews()
+        rebuildAggregateTables()
     }
 
     @AfterEach
     fun tearDown() {
-        benchmarkQueryUseCase.mode = QueryMode.MATERIALIZED_VIEW
+        benchmarkQueryUseCase.mode = QueryMode.AGGREGATE
         deleteBenchmarkData()
-        refreshMaterializedViews()
+        rebuildAggregateTables()
     }
 
     @Test
-    @DisplayName("materialized view와 원본 직접 집계 API의 성능을 비교한다")
-    fun comparesMaterializedViewAndRawAggregationPerformance() {
+    @DisplayName("aggregate 테이블과 원본 직접 집계 API의 성능을 비교한다")
+    fun comparesAggregateAndRawAggregationPerformance() {
         val results = AirQualityResolution.entries.associateWith { resolution ->
             assertEquivalentResults(resolution)
 
@@ -174,16 +174,16 @@ class AirQualityQueryPerformanceTest(
         }
 
         printResults(results)
-        printMaterializedViewCosts(measureMaterializedViewCosts())
+        printAggregateTableCosts(measureAggregateTableCosts())
 
         results.forEach { (resolution, measurements) ->
-            assertThat(measurements[QueryMode.MATERIALIZED_VIEW]!!.pointCount)
+            assertThat(measurements[QueryMode.AGGREGATE]!!.pointCount)
                 .isEqualTo(measurements[QueryMode.RAW]!!.pointCount)
 
-            val materializedViewP50 = measurements[QueryMode.MATERIALIZED_VIEW]!!.p50Millis
+            val aggregateP50 = measurements[QueryMode.AGGREGATE]!!.p50Millis
             val rawP50 = measurements[QueryMode.RAW]!!.p50Millis
-            assertThat(materializedViewP50)
-                .withFailMessage("MV p50 측정값이 0ms입니다: resolution=$resolution")
+            assertThat(aggregateP50)
+                .withFailMessage("aggregate p50 측정값이 0ms입니다: resolution=$resolution")
                 .isGreaterThan(0.0)
             assertThat(rawP50)
                 .withFailMessage("RAW p50 측정값이 0ms입니다: resolution=$resolution")
@@ -192,17 +192,17 @@ class AirQualityQueryPerformanceTest(
     }
 
     private fun assertEquivalentResults(resolution: AirQualityResolution) {
-        val materializedViewResult = request(resolution, QueryMode.MATERIALIZED_VIEW).content
+        val aggregateResult = request(resolution, QueryMode.AGGREGATE).content
         val rawResult = request(resolution, QueryMode.RAW).content
 
-        assertJsonEquals(materializedViewResult, rawResult, "result.content")
+        assertJsonEquals(aggregateResult, rawResult, "result.content")
     }
 
     private fun pairedOrders(roundCount: Int, resolution: AirQualityResolution): List<List<QueryMode>> {
         check(roundCount % 2 == 0) { "paired round 수는 짝수여야 합니다: $roundCount" }
 
         return MutableList(roundCount) { index ->
-            if (index < roundCount / 2) QueryMode.MATERIALIZED_VIEW else QueryMode.RAW
+            if (index < roundCount / 2) QueryMode.AGGREGATE else QueryMode.RAW
         }
             .shuffled(Random(PAIR_ORDER_SEED + resolution.ordinal))
             .map { first -> listOf(first, first.other()) }
@@ -294,10 +294,27 @@ class AirQualityQueryPerformanceTest(
         }
     }
 
-    private fun refreshMaterializedViews() {
-        MATERIALIZED_VIEWS.forEach { viewName ->
-            jdbcTemplate.execute("refresh materialized view $viewName")
-        }
+    private fun rebuildAggregateTables() {
+        AGGREGATE_TABLES.forEach(::rebuildAggregateTable)
+    }
+
+    private fun rebuildAggregateTable(table: AggregateTable) {
+        jdbcTemplate.execute("truncate table ${table.name}")
+        jdbcTemplate.execute(
+            """
+            insert into ${table.name} (
+                bucket_start, bucket_end, sum_pm25, max_pm25, min_pm25,
+                sum_humidity, sum_temperature, sum_eco2, sum_bvoc, sample_count
+            )
+            select
+                date_bin(interval '${table.interval}', sensor_measured_at, timestamp with time zone '1970-01-01 00:00:00+00'),
+                date_bin(interval '${table.interval}', sensor_measured_at, timestamp with time zone '1970-01-01 00:00:00+00') + interval '${table.interval}',
+                sum(pm25), max(pm25), min(pm25), sum(humidity), sum(temperature),
+                sum(estimated_eco2ppm), sum(estimated_bvocppm), count(*)
+            from air_quality
+            group by 1, 2
+            """.trimIndent()
+        )
     }
 
     private fun deleteBenchmarkData() {
@@ -318,18 +335,18 @@ class AirQualityQueryPerformanceTest(
         return sorted[index] / NANOS_PER_MILLISECOND
     }
 
-    private fun measureMaterializedViewCosts(): List<MaterializedViewCost> {
-        return MATERIALIZED_VIEWS.map { viewName ->
+    private fun measureAggregateTableCosts(): List<AggregateTableCost> {
+        return AGGREGATE_TABLES.map { table ->
             val startedAt = System.nanoTime()
-            jdbcTemplate.execute("refresh materialized view concurrently $viewName")
-            val refreshMillis = (System.nanoTime() - startedAt) / NANOS_PER_MILLISECOND
+            rebuildAggregateTable(table)
+            val rebuildMillis = (System.nanoTime() - startedAt) / NANOS_PER_MILLISECOND
             val sizeBytes = jdbcTemplate.queryForObject(
                 "select pg_total_relation_size(?::regclass)",
                 Long::class.java,
-                viewName,
+                table.name,
             )!!
 
-            MaterializedViewCost(viewName, refreshMillis, sizeBytes)
+            AggregateTableCost(table.name, rebuildMillis, sizeBytes)
         }
     }
 
@@ -359,30 +376,30 @@ class AirQualityQueryPerformanceTest(
                 )
             }
 
-            val materializedViewP50 = measurements.getValue(QueryMode.MATERIALIZED_VIEW).p50Millis
+            val aggregateP50 = measurements.getValue(QueryMode.AGGREGATE).p50Millis
             val rawP50 = measurements.getValue(QueryMode.RAW).p50Millis
             println(
                 String.format(
                     Locale.US,
-                    "speedup (%s): RAW / MV p50 = %.2fx",
+                    "speedup (%s): RAW / aggregate p50 = %.2fx",
                     resolution.code,
-                    rawP50 / materializedViewP50,
+                    rawP50 / aggregateP50,
                 )
             )
         }
         println()
     }
 
-    private fun printMaterializedViewCosts(costs: List<MaterializedViewCost>) {
-        println("=== Materialized View Refresh and Storage Costs (excluded from query timing) ===")
-        println("view | refresh concurrently(ms) | total relation size(bytes)")
+    private fun printAggregateTableCosts(costs: List<AggregateTableCost>) {
+        println("=== Aggregate Table Rebuild and Storage Costs (excluded from query timing) ===")
+        println("table | rebuild(ms) | total relation size(bytes)")
         costs.forEach { cost ->
             println(
                 String.format(
                     Locale.US,
-                    "%-22s | %24.2f | %26d",
-                    cost.viewName,
-                    cost.refreshMillis,
+                    "%-28s | %11.2f | %26d",
+                    cost.tableName,
+                    cost.rebuildMillis,
                     cost.sizeBytes,
                 )
             )
@@ -405,9 +422,14 @@ class AirQualityQueryPerformanceTest(
         val pointCount: Int,
     )
 
-    private data class MaterializedViewCost(
-        val viewName: String,
-        val refreshMillis: Double,
+    private data class AggregateTable(
+        val name: String,
+        val interval: String,
+    )
+
+    private data class AggregateTableCost(
+        val tableName: String,
+        val rebuildMillis: Double,
         val sizeBytes: Long,
     )
 
@@ -422,11 +444,11 @@ class AirQualityQueryPerformanceTest(
         @Bean
         @Primary
         fun benchmarkQueryUseCase(
-            materializedViewService: AirQualityQueryService,
+            aggregateService: AirQualityQueryService,
             jdbcTemplate: JdbcTemplate,
         ): BenchmarkQueryUseCase {
             return BenchmarkQueryUseCase(
-                materializedViewService = materializedViewService,
+                aggregateService = aggregateService,
                 rawService = RawAirQualityQueryService(jdbcTemplate),
             )
         }
@@ -434,25 +456,25 @@ class AirQualityQueryPerformanceTest(
 }
 
 enum class QueryMode(val label: String) {
-    MATERIALIZED_VIEW("MV"),
+    AGGREGATE("AGGREGATE"),
     RAW("RAW"),
 }
 
 class BenchmarkQueryUseCase(
-    private val materializedViewService: AirQualityQueryService,
+    private val aggregateService: AirQualityQueryService,
     private val rawService: RawAirQualityQueryService,
 ) : QueryAirQualityUseCase {
-    var mode: QueryMode = QueryMode.MATERIALIZED_VIEW
+    var mode: QueryMode = QueryMode.AGGREGATE
 
     override fun queryAirQuality(): GetAirQualityResponse {
-        return materializedViewService.queryAirQuality()
+        return aggregateService.queryAirQuality()
     }
 
     override fun queryAirQualityTimeseries(
         dto: GetTimeseriesDTO,
     ): Slice<AirQualityTimeseriesPointDTO> {
         return when (mode) {
-            QueryMode.MATERIALIZED_VIEW -> materializedViewService.queryAirQualityTimeseries(dto)
+            QueryMode.AGGREGATE -> aggregateService.queryAirQualityTimeseries(dto)
             QueryMode.RAW -> rawService.queryAirQualityTimeseries(dto)
         }
     }
@@ -461,7 +483,7 @@ class BenchmarkQueryUseCase(
         dto: GetTimeseriesHistoryDTO,
     ): Slice<AirQualityTimeseriesPointDTO> {
         return when (mode) {
-            QueryMode.MATERIALIZED_VIEW -> materializedViewService.queryAirQualityTimeseriesHistory(dto)
+            QueryMode.AGGREGATE -> aggregateService.queryAirQualityTimeseriesHistory(dto)
             QueryMode.RAW -> error("RAW history 집계는 구현되지 않았습니다. 이 벤치마크는 /air-quality/timeseries만 비교합니다.")
         }
     }
@@ -469,8 +491,8 @@ class BenchmarkQueryUseCase(
 
 private fun QueryMode.other(): QueryMode {
     return when (this) {
-        QueryMode.MATERIALIZED_VIEW -> QueryMode.RAW
-        QueryMode.RAW -> QueryMode.MATERIALIZED_VIEW
+        QueryMode.AGGREGATE -> QueryMode.RAW
+        QueryMode.RAW -> QueryMode.AGGREGATE
     }
 }
 

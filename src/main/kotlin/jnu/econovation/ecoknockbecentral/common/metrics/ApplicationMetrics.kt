@@ -8,6 +8,11 @@ import org.springframework.stereotype.Component
 class ApplicationMetrics(
     private val meterRegistry: MeterRegistry,
 ) {
+    private companion object {
+        const val SUCCESS = "success"
+        const val FAILURE = "failure"
+    }
+
     fun startTimer(): Timer.Sample {
         return Timer.start(meterRegistry)
     }
@@ -48,8 +53,8 @@ class ApplicationMetrics(
         return record("eco.knock.auto.control.action", "decision", decision, action)
     }
 
-    fun <T> recordMaterializedViewRefresh(view: String, action: () -> T): T {
-        return record("eco.knock.materialized.view.refresh", "view", view, action)
+    fun <T> recordAirQualityAggregation(resolution: String, action: () -> T): T {
+        return record("eco.knock.air.quality.aggregation", "resolution", resolution, action)
     }
 
     private fun <T> record(metricName: String, firstTag: String, firstValue: String, action: () -> T): T {
@@ -87,8 +92,4 @@ class ApplicationMetrics(
         sample.stop(Timer.builder(metricName).tags(*tags).register(meterRegistry))
     }
 
-    private companion object {
-        const val SUCCESS = "success"
-        const val FAILURE = "failure"
-    }
 }

@@ -34,11 +34,11 @@ SSO 회원별 서버 관리형 EVM 지갑을 생성하고, 암호화한 개인�
 
 - Spring Boot 4, Java 25, Kotlin 혼합 프로젝트
 - PostgreSQL과 Spring Data JPA 기반 데이터 저장
-- Flyway 기반 스키마와 materialized view 관리
+- Flyway 기반 스키마와 공기질 aggregate 테이블 관리
 - Redis 기반 refresh token jti 저장 및 토큰 회전
 - 센서·조도 센서·공기청정기 gRPC polling
 - queue/consumer 기반 공기질·조도 리포트 저장
-- `1m`, `5m`, `15m`, `1h`, `4h`, `1d` 공기질 materialized view와 주기적 refresh
+- `1m`, `5m`, `15m`, `1h`, `4h`, `1d` 공기질 aggregate 테이블과 최근 3분 incremental 집계
 - 공기질 timeseries·history 조회 및 SSE 실시간 스트림
 - 조도와 최근 공기질을 기준으로 한 공기청정기 자동제어
 - auth-econovation APP SSO 로그인과 HttpOnly JWT 쿠키 인증
@@ -343,10 +343,11 @@ Flyway는 `classpath:db/migration` 아래 SQL을 버전 순서대로 실행합�
 | V16 | 회원별 overview 레이아웃과 grid size 저장 테이블 생성 |
 | V17 | overview icon URL nullable 처리 및 회원 삭제 cascade 추가 |
 | V18 | 회원 삭제 시 `ai_chat_history`도 `ON DELETE CASCADE`로 삭제 |
+| V23 | 공기질 materialized view를 aggregate 테이블로 전환하고 기존 raw 데이터 백필 |
 
 JPA 설정은 `ddl-auto: validate`이므로 애플리케이션 시작 시 엔티티와 DB 스키마가 일치하는지 검증합니다.
 
-### 공기질 Materialized View 성능 실험
+### 공기질 Aggregate 테이블 성능 실험
 
 공기질 조회 전략은 기본 테스트와 분리한 수동 성능 실험으로 비교합니다.
 
@@ -357,11 +358,11 @@ JPA 설정은 `ddl-auto: validate`이므로 애플리케이션 시작 시 엔티
 
 - `performanceTest`는 `performance` 태그만 실행하며 기본 `test`에서는 제외됩니다.
 - 로컬 PostgreSQL의 2099년 합성 초 단위 데이터 약 259만 건을 사용하고, `1m`부터 `1d`까지 모든 해상도에서 30개 포인트를 반환합니다.
-- 각 해상도에서 MV와 원본 직접 집계 API의 `result.content` 전체를 먼저 비교합니다. 포인트 순서·시각·품질·sample count는 정확히 일치해야 하며 실수값은 `1e-9` 이내만 허용합니다.
-- warm-cache 조건에서 20회 워밍업 뒤, 순서를 고정 시드로 섞은 100회 paired 측정으로 p50·p95·p99·min·max와 `RAW / MV p50`을 출력합니다. 측정에는 HTTP 응답 본문 수신·DTO 생성·JSON 직렬화가 포함됩니다.
-- 쿼리 측정이 끝난 뒤 MV별 `REFRESH MATERIALIZED VIEW CONCURRENTLY` 시간과 `pg_total_relation_size`를 별도로 출력합니다. 이 비용은 조회 응답시간에 포함하지 않습니다.
+- 각 해상도에서 aggregate 테이블과 원본 직접 집계 API의 `result.content` 전체를 먼저 비교합니다. 포인트 순서·시각·품질·sample count는 정확히 일치해야 하며 실수값은 `1e-9` 이내만 허용합니다.
+- warm-cache 조건에서 20회 워밍업 뒤, 순서를 고정 시드로 섞은 100회 paired 측정으로 p50·p95·p99·min·max와 `RAW / AGGREGATE p50`을 출력합니다. 측정에는 HTTP 응답 본문 수신·DTO 생성·JSON 직렬화가 포함됩니다.
+- 쿼리 측정이 끝난 뒤 aggregate 테이블별 raw 기반 재구축 시간과 `pg_total_relation_size`를 별도로 출력합니다. 이 비용은 조회 응답시간에 포함하지 않습니다.
 
-따라서 결과는 **현재 구현된 Spring Data JPA 기반 MV API 경로와 JdbcTemplate 기반 원본 집계 API 경로를 로컬 warm-cache 환경에서 비교한 값**입니다. 운영 환경 전체의 성능, 동시 요청 처리량, 사용자 체감 성능을 일반화하지 않습니다. MV는 조회 시간을 줄이는 대신 refresh 시간·저장 공간·갱신 직전 데이터의 stale 가능성을 비용으로 가집니다. 성능 실험 중에는 `air-quality.scheduler.enabled=false`로 주기적 MV refresh를 비활성화해 측정에 섞이지 않게 합니다.
+따라서 결과는 **현재 구현된 Spring Data JPA 기반 aggregate API 경로와 JdbcTemplate 기반 원본 집계 API 경로를 로컬 warm-cache 환경에서 비교한 값**입니다. 운영 환경 전체의 성능, 동시 요청 처리량, 사용자 체감 성능을 일반화하지 않습니다. aggregate 테이블은 조회 시간을 줄이는 대신 재구축 시간·저장 공간·스케줄러 주기 내 최신 데이터 지연을 비용으로 가집니다. 성능 실험 중에는 `air-quality.scheduler.enabled=false`로 주기적 incremental 집계를 비활성화해 측정에 섞이지 않게 합니다.
 
 ## 주요 데이터 흐름
 
@@ -623,7 +624,7 @@ Actuator는 management 포트 `18082`에서 health, info, prometheus 지표를 �
 - Grafana prod: `PROD_GRAFANA_HOST`
 - Grafana 계정: `admin` / `ADMIN_MASTER_PASSWORD`
 
-Grafana는 datasource와 `Eco Knock Performance` dashboard를 자동 provisioning합니다. 대시보드에는 HTTP 요청·p95·5xx, JVM/CPU/heap, Hikari connection, gRPC, polling·queue, 자동제어, materialized view refresh 지표가 포함됩니다.
+Grafana는 datasource와 `Eco Knock Performance` dashboard를 자동 provisioning합니다. 대시보드에는 HTTP 요청·p95·5xx, JVM/CPU/heap, Hikari connection, gRPC, polling·queue, 자동제어, 공기질 aggregate incremental 집계 지표가 포함됩니다.
 
 ## gRPC
 

@@ -10,34 +10,54 @@ data class AirQualityViewDTO(
     val content: AirQualityViewContent
 ) {
     companion object {
-        fun from(entity: AirQualityView): AirQualityViewDTO {
+        fun from(entity: AirQualityAggregate): AirQualityViewDTO {
             val timeUnit = when (entity) {
-                is AirQuality1dView -> "1d"
-                is AirQuality1hView -> "1h"
-                is AirQuality1mView -> "1m"
-                is AirQuality4hView -> "4h"
-                is AirQuality5mView -> "5m"
-                is AirQuality15mView -> "15m"
+                is AirQuality1mAggregate -> "1m"
+                is AirQuality5mAggregate -> "5m"
+                is AirQuality15mAggregate -> "15m"
+                is AirQuality1hAggregate -> "1h"
+                is AirQuality4hAggregate -> "4h"
+                is AirQuality1dAggregate -> "1d"
 
                 else -> throw InternalServerException(
-                    IllegalStateException("알려지지 않은 타입의 AirQualityView -> ${entity.javaClass.name}")
+                    IllegalStateException(
+                        "알려지지 않은 타입의 AirQualityAggregate -> ${entity.javaClass.name}"
+                    )
                 )
             }
+
+            val sampleCount = entity.sampleCount
+
+            if (sampleCount <= 0) {
+                throw InternalServerException(
+                    IllegalStateException(
+                        "AirQualityAggregate sampleCount가 0 이하입니다. bucketStart=${entity.bucketStart}"
+                    )
+                )
+            }
+
+            val count = sampleCount.toDouble()
 
             val content = AirQualityViewContent(
                 start = entity.bucketStart.toZonedDateTime(),
                 end = entity.bucketEnd.toZonedDateTime(),
-                avgPM25 = entity.avgPm25,
+
+                avgPM25 = entity.sumPm25.toDouble() / count,
                 maxPM25 = entity.maxPm25,
                 minPM25 = entity.minPm25,
-                avgHumidity = entity.avgHumidity,
-                avgTemperature = entity.avgTemperature,
-                avgEco2PPM = entity.avgEco2,
-                avgBvocPPM = entity.avgBvoc,
-                sampleCount = entity.sampleCount
+
+                avgHumidity = entity.sumHumidity / count,
+                avgTemperature = entity.sumTemperature / count,
+                avgEco2PPM = entity.sumEco2 / count,
+                avgBvocPPM = entity.sumBvoc / count,
+
+                sampleCount = sampleCount,
             )
 
-            return AirQualityViewDTO(timeUnit = timeUnit, content = content)
+            return AirQualityViewDTO(
+                timeUnit = timeUnit,
+                content = content,
+            )
         }
     }
 }
@@ -52,5 +72,5 @@ data class AirQualityViewContent(
     val avgTemperature: Double,
     val avgEco2PPM: Double,
     val avgBvocPPM: Double,
-    val sampleCount: Long
+    val sampleCount: Long,
 )

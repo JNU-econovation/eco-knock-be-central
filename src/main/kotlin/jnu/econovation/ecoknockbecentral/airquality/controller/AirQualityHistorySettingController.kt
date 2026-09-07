@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jnu.econovation.ecoknockbecentral.airquality.dto.rest.request.UpdateAirQualityHistorySettingRequest
 import jnu.econovation.ecoknockbecentral.airquality.dto.rest.response.GetAirQualityHistorySettingResponse
-import jnu.econovation.ecoknockbecentral.airquality.service.AirQualityHistorySettingService
+import jnu.econovation.ecoknockbecentral.airquality.service.AirQualityCustomizeService
 import jnu.econovation.ecoknockbecentral.common.dto.response.CommonResponse
 import jnu.econovation.ecoknockbecentral.common.dto.response.CommonResponse.emptySuccess
 import jnu.econovation.ecoknockbecentral.common.dto.response.CommonResponse.success
@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.*
 @Tag(name = "Air Quality", description = "공기질 시계열 API")
 @SecurityRequirement(name = ACCESS_TOKEN_SECURITY_SCHEME_NAME)
 class AirQualityHistorySettingController(
-    private val service: AirQualityHistorySettingService,
+    private val service: AirQualityCustomizeService,
 ) {
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     @Operation(
