@@ -42,7 +42,14 @@ public class MemberWalletService {
 
         return memberWalletRepository
                 .findByMemberIdAndWalletType(memberId, WalletType.MANAGED)
-                .orElseGet(() -> createAndSaveManagedWallet(member));
+                .orElseGet(() -> {
+                    boolean activeRewardDestination = !memberWalletRepository
+                            .existsByMemberIdAndActiveRewardDestinationTrue(member.getId());
+
+                    return memberWalletRepository.save(
+                            createManagedWallet(member, activeRewardDestination)
+                    );
+                });
     }
 
     @Transactional
@@ -87,18 +94,6 @@ public class MemberWalletService {
         }
         return member;
     }
-
-    private MemberWallet createAndSaveManagedWallet(Member member) {
-        boolean activeRewardDestination = !memberWalletRepository
-                .existsByMemberIdAndActiveRewardDestinationTrue(
-                        member.getId()
-                );
-
-        return memberWalletRepository.save(
-                createManagedWallet(member, activeRewardDestination)
-        );
-    }
-
 
     private MemberWallet createManagedWallet(
             Member member,
