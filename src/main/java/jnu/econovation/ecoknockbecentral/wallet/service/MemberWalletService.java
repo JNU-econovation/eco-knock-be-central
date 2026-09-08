@@ -10,8 +10,8 @@ import jnu.econovation.ecoknockbecentral.wallet.model.entity.MemberWallet;
 import jnu.econovation.ecoknockbecentral.wallet.model.vo.WalletType;
 import jnu.econovation.ecoknockbecentral.wallet.repository.MemberWalletRepository;
 import jnu.econovation.ecoknockbecentral.wallet.security.WalletPrivateKeyCipher;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.web3j.crypto.Credentials;
 import org.web3j.crypto.ECKeyPair;
@@ -26,6 +26,7 @@ import java.util.Optional;
 
 
 @Service
+@RequiredArgsConstructor
 public class MemberWalletService {
 
     private static final int PRIVATE_KEY_HEX_LENGTH = 64;  // EVM Private Key: 256bit -> Hex * 16
@@ -35,37 +36,16 @@ public class MemberWalletService {
     private final MemberWalletRepository memberWalletRepository;
     private final WalletPrivateKeyCipher privateKeyCipher;
 
-    public MemberWalletService(
-            EntityManager entityManager,
-            MemberRepository memberRepository,
-            MemberWalletRepository memberWalletRepository,
-            WalletPrivateKeyCipher privateKeyCipher
-    ) {
-        this.entityManager = entityManager;
-        this.memberRepository = memberRepository;
-        this.memberWalletRepository = memberWalletRepository;
-        this.privateKeyCipher = privateKeyCipher;
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public MemberWallet createManagedWalletIfAbsent(Long memberId) {
         Member member = findMemberWithLock(memberId);
 
-        Optional<MemberWallet> existingWallet = memberWalletRepository.findByMemberIdAndWalletType(
-                memberId,
-                WalletType.MANAGED
-        );
-        if (existingWallet.isPresent()) {
-            return existingWallet.get();
-        }
-
-        boolean activeRewardDestination = !memberWalletRepository
-                .existsByMemberIdAndActiveRewardDestinationTrue(memberId);
-
-        return memberWalletRepository.save(createManagedWallet(member, activeRewardDestination));
+        return memberWalletRepository
+                .findByMemberIdAndWalletType(memberId, WalletType.MANAGED)
+                .orElseGet(() -> createAndSaveManagedWallet(member));
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public int createManagedWalletsForExistingMembers() {
         List<Long> memberIds = memberRepository.findAll().stream()
                 .filter(member -> member.getRole() != Role.GUEST) //이미 존재하는 회원 중 게스트는 지갑 생성 차단
@@ -108,13 +88,30 @@ public class MemberWalletService {
         return member;
     }
 
-    private MemberWallet createManagedWallet(Member member, boolean activeRewardDestination) {
+    private MemberWallet createAndSaveManagedWallet(Member member) {
+        boolean activeRewardDestination = !memberWalletRepository
+                .existsByMemberIdAndActiveRewardDestinationTrue(
+                        member.getId()
+                );
+
+        return memberWalletRepository.save(
+                createManagedWallet(member, activeRewardDestination)
+        );
+    }
+
+
+    private MemberWallet createManagedWallet(
+            Member member,
+            boolean activeRewardDestination
+    ) {
         try {
             ECKeyPair keyPair = Keys.createEcKeyPair();
+
             String privateKey = Numeric.toHexStringWithPrefixZeroPadded(
                     keyPair.getPrivateKey(),
                     PRIVATE_KEY_HEX_LENGTH
             );
+
             String walletAddress = Credentials.create(keyPair)
                     .getAddress()
                     .toLowerCase(Locale.ROOT);
