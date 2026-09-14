@@ -354,57 +354,123 @@ class AirQualityQueryPerformanceTest(
         results: Map<AirQualityResolution, Map<QueryMode, Measurement>>,
     ) {
         println()
-        println("=== Air Quality Query Performance: 30 points per resolution ===")
-        println("resolution | mode | p50(ms) | p95(ms) | p99(ms) | min(ms) | max(ms) | points")
-
-        results.forEach { (resolution, measurements) ->
-            QueryMode.entries.forEach { mode ->
-                val measurement = measurements.getValue(mode)
-                println(
-                    String.format(
-                        Locale.US,
-                        "%-10s | %-4s | %7.2f | %7.2f | %7.2f | %7.2f | %7.2f | %d",
+        printTable(
+            title = "공기질 조회 성능 (해상도별 30개 포인트)",
+            headers = listOf("해상도", "조회 방식", "p50(ms)", "p95(ms)", "p99(ms)", "최소(ms)", "최대(ms)", "포인트"),
+            rows = results.flatMap { (resolution, measurements) ->
+                QueryMode.entries.map { mode ->
+                    val measurement = measurements.getValue(mode)
+                    listOf(
                         resolution.code,
                         mode.label,
-                        measurement.p50Millis,
-                        measurement.p95Millis,
-                        measurement.p99Millis,
-                        measurement.minMillis,
-                        measurement.maxMillis,
-                        measurement.pointCount,
+                        formatMillis(measurement.p50Millis),
+                        formatMillis(measurement.p95Millis),
+                        formatMillis(measurement.p99Millis),
+                        formatMillis(measurement.minMillis),
+                        formatMillis(measurement.maxMillis),
+                        measurement.pointCount.toString(),
                     )
-                )
-            }
+                }
+            },
+            rightAlignedColumns = setOf(2, 3, 4, 5, 6, 7),
+        )
 
-            val aggregateP50 = measurements.getValue(QueryMode.AGGREGATE).p50Millis
-            val rawP50 = measurements.getValue(QueryMode.RAW).p50Millis
-            println(
-                String.format(
-                    Locale.US,
-                    "speedup (%s): RAW / aggregate p50 = %.2fx",
+        printTable(
+            title = "속도 향상 (원본 / 집계 p50)",
+            headers = listOf("해상도", "원본 p50(ms)", "집계 p50(ms)", "속도 향상"),
+            rows = results.map { (resolution, measurements) ->
+                val aggregateP50 = measurements.getValue(QueryMode.AGGREGATE).p50Millis
+                val rawP50 = measurements.getValue(QueryMode.RAW).p50Millis
+                listOf(
                     resolution.code,
-                    rawP50 / aggregateP50,
+                    formatMillis(rawP50),
+                    formatMillis(aggregateP50),
+                    String.format(Locale.US, "%.2fx", rawP50 / aggregateP50),
                 )
-            )
-        }
+            },
+            rightAlignedColumns = setOf(1, 2, 3),
+        )
         println()
     }
 
     private fun printAggregateTableCosts(costs: List<AggregateTableCost>) {
-        println("=== Aggregate Table Rebuild and Storage Costs (excluded from query timing) ===")
-        println("table | rebuild(ms) | total relation size(bytes)")
-        costs.forEach { cost ->
-            println(
-                String.format(
-                    Locale.US,
-                    "%-28s | %11.2f | %26d",
+        printTable(
+            title = "집계 테이블 재구축 및 저장공간 비용 (조회 시간 제외)",
+            headers = listOf("테이블", "재구축(ms)", "전체 크기(bytes)"),
+            rows = costs.map { cost ->
+                listOf(
                     cost.tableName,
-                    cost.rebuildMillis,
-                    cost.sizeBytes,
+                    formatMillis(cost.rebuildMillis),
+                    String.format(Locale.US, "%,d", cost.sizeBytes),
                 )
-            )
-        }
+            },
+            rightAlignedColumns = setOf(1, 2),
+        )
         println()
+    }
+
+    private fun printTable(
+        title: String,
+        headers: List<String>,
+        rows: List<List<String>>,
+        rightAlignedColumns: Set<Int> = emptySet(),
+    ) {
+        val tableRows = listOf(headers) + rows
+        val columnWidths = headers.indices.map { index ->
+            tableRows.maxOf { row -> displayWidth(row[index]) }
+        }
+
+        fun border(left: String, junction: String, right: String): String {
+            return left + columnWidths.joinToString(junction) { "─".repeat(it + 2) } + right
+        }
+
+        fun row(values: List<String>): String {
+            return "│ " + values.mapIndexed { index, value ->
+                padCell(
+                    value = value,
+                    width = columnWidths[index],
+                    rightAligned = index in rightAlignedColumns,
+                )
+            }.joinToString(" │ ") + " │"
+        }
+
+        println("=== $title ===")
+        println(border("┌", "┬", "┐"))
+        println(row(headers))
+        println(border("├", "┼", "┤"))
+        rows.forEach { println(row(it)) }
+        println(border("└", "┴", "┘"))
+    }
+
+    private fun formatMillis(value: Double): String {
+        return String.format(Locale.US, "%.2f", value)
+    }
+
+    private fun padCell(
+        value: String,
+        width: Int,
+        rightAligned: Boolean,
+    ): String {
+        val padding = " ".repeat(width - displayWidth(value))
+        return if (rightAligned) padding + value else value + padding
+    }
+
+    private fun displayWidth(value: String): Int {
+        return value.codePoints().toArray().sumOf { codePoint ->
+            if (isWideCodePoint(codePoint)) 2 else 1
+        }
+    }
+
+    private fun isWideCodePoint(codePoint: Int): Boolean {
+        return codePoint in 0x1100..0x115F ||
+            codePoint in 0x2329..0x232A ||
+            codePoint in 0x2E80..0xA4CF ||
+            codePoint in 0xAC00..0xD7A3 ||
+            codePoint in 0xF900..0xFAFF ||
+            codePoint in 0xFE10..0xFE19 ||
+            codePoint in 0xFE30..0xFE6F ||
+            codePoint in 0xFF00..0xFF60 ||
+            codePoint in 0xFFE0..0xFFE6
     }
 
     private data class RequestMeasurement(
@@ -456,8 +522,8 @@ class AirQualityQueryPerformanceTest(
 }
 
 enum class QueryMode(val label: String) {
-    AGGREGATE("AGGREGATE"),
-    RAW("RAW"),
+    AGGREGATE("집계"),
+    RAW("원본"),
 }
 
 class BenchmarkQueryUseCase(
