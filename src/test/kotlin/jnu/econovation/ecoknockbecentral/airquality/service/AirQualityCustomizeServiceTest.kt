@@ -10,8 +10,9 @@ import jnu.econovation.ecoknockbecentral.member.model.vo.Role
 import jnu.econovation.ecoknockbecentral.member.service.MemberService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.mock
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
@@ -24,8 +25,11 @@ class AirQualityCustomizeServiceTest {
     @Test
     fun initializesFifteenMinuteDefaultWhenSettingDoesNotExist() {
         val member = mock<Member>()
-        whenever(repository.existsByMemberId(memberInfo.id)).thenReturn(false)
+        whenever(repository.findByMemberId(memberInfo.id)).thenReturn(null)
         whenever(memberService.getEntityOrThrow(memberInfo.id)).thenReturn(member)
+        whenever(repository.save(any<AirQualityHistorySetting>())).thenAnswer { invocation ->
+            invocation.getArgument(0)
+        }
 
         service.initialize(memberInfo.id)
 
@@ -55,7 +59,7 @@ class AirQualityCustomizeServiceTest {
             .build()
         whenever(repository.findByMemberId(memberInfo.id)).thenReturn(setting)
 
-        val response = service.get(memberInfo)
+        val response = service.getOrInit(memberInfo)
 
         assertThat(response.resolution).isEqualTo(AirQualityResolution.FIFTEEN_MINUTES)
     }

@@ -21,7 +21,6 @@ import jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstant
 import jnu.econovation.ecoknockbecentral.common.openapi.constant.OpenApiConstants.UNAUTHORIZED_EXAMPLE_REF
 import jnu.econovation.ecoknockbecentral.common.security.dto.EcoKnockUserDetails
 import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 
@@ -51,8 +50,11 @@ class AirQualityHistorySettingController(
             )
         ]
     )
-    fun get(@AuthenticationPrincipal userDetails: EcoKnockUserDetails): ResponseEntity<CommonResponse<GetAirQualityHistorySettingResponse>> =
-        ResponseEntity.ok(success(service.get(userDetails.memberInfo)))
+    fun get(
+        @AuthenticationPrincipal userDetails: EcoKnockUserDetails
+    ): CommonResponse<GetAirQualityHistorySettingResponse> {
+        return success(service.getOrInit(userDetails.memberInfo))
+    }
 
     @PutMapping(
         consumes = [MediaType.APPLICATION_JSON_VALUE],
@@ -100,8 +102,8 @@ class AirQualityHistorySettingController(
     fun update(
         @AuthenticationPrincipal userDetails: EcoKnockUserDetails,
         @RequestBody request: UpdateAirQualityHistorySettingRequest
-    ): ResponseEntity<CommonResponse<Void>> {
+    ): CommonResponse<Void> {
         service.update(userDetails.memberInfo, request)
-        return ResponseEntity.ok(emptySuccess())
+        return emptySuccess()
     }
 }
