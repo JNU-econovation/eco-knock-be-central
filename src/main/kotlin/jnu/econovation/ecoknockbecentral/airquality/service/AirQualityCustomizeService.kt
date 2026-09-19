@@ -5,7 +5,6 @@ import jnu.econovation.ecoknockbecentral.airquality.dto.rest.response.GetAirQual
 import jnu.econovation.ecoknockbecentral.airquality.model.entity.AirQualityHistorySetting
 import jnu.econovation.ecoknockbecentral.airquality.model.vo.AirQualityResolution
 import jnu.econovation.ecoknockbecentral.airquality.repository.AirQualityCustomizeRepository
-import jnu.econovation.ecoknockbecentral.common.exception.server.InternalServerException
 import jnu.econovation.ecoknockbecentral.member.dto.MemberInfoDTO
 import jnu.econovation.ecoknockbecentral.member.service.MemberService
 import org.springframework.stereotype.Service
@@ -17,38 +16,40 @@ class AirQualityCustomizeService(
     private val memberService: MemberService,
     private val repository: AirQualityCustomizeRepository,
 ) {
+    companion object {
+        private val DEFAULT_RESOLUTION = AirQualityResolution.FIFTEEN_MINUTES
+    }
+
+    //실패해도 상관 없음
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun initialize(memberId: Long) {
-        if (repository.existsByMemberId(memberId)) {
-            return
-        }
+    fun initialize(memberId: Long): AirQualityHistorySetting {
+        repository.findByMemberId(memberId)?.let { return it }
 
         val member = memberService.getEntityOrThrow(memberId)
-        repository.save(
-            AirQualityHistorySetting.builder()
-                .member(member)
-                .resolution(AirQualityResolution.FIFTEEN_MINUTES)
-                .build()
-        )
+
+        val newSetting = AirQualityHistorySetting.builder()
+            .member(member)
+            .resolution(DEFAULT_RESOLUTION)
+            .build()
+
+        return repository.save(newSetting)
     }
 
-    @Transactional(readOnly = true)
-    fun get(memberInfo: MemberInfoDTO): GetAirQualityHistorySettingResponse {
+    //lazy init 가능
+    @Transactional
+    fun getOrInit(memberInfo: MemberInfoDTO): GetAirQualityHistorySettingResponse {
         val setting = repository.findByMemberId(memberInfo.id)
-            ?: throw InternalServerException(
-                IllegalStateException("id가 ${memberInfo.id}인 공기질 과거 시계열 설정을 찾을 수 없음.")
-            )
-        return GetAirQualityHistorySettingResponse(
-            resolution = setting.resolution
-        )
+            ?: initialize(memberInfo.id)
+
+        return GetAirQualityHistorySettingResponse.from(setting)
     }
 
+    //lazy init 가능
     @Transactional
     fun update(memberInfo: MemberInfoDTO, request: UpdateAirQualityHistorySettingRequest) {
         val setting = repository.findByMemberId(memberInfo.id)
-            ?: throw InternalServerException(
-                IllegalStateException("id가 ${memberInfo.id}인 공기질 과거 시계열 설정을 찾을 수 없음.")
-            )
+            ?: initialize(memberInfo.id)
+
         setting.changeResolution(request.resolution)
     }
 }

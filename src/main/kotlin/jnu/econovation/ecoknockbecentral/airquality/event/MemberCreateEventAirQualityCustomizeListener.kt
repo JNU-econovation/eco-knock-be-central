@@ -8,13 +8,14 @@ import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
 
 @Component
-class MemberCreatedEventAirQualityHistorySettingListener(
+class MemberCreateEventAirQualityCustomizeListener(
     private val service: AirQualityCustomizeService,
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
 
+    //기본값 처리를 실패해도 회원가입은 성공해도 된다.
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun initializeSetting(event: MemberCreatedEvent) {
         try {
