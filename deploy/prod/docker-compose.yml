@@ -60,7 +60,7 @@ services:
     environment:
       EMBEDDED_SERVER_HOST: ${EMBEDDED_SERVER_HOST}
     command:
-      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.time=60d
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ../shared/prometheus/startup.sh:/etc/prometheus/startup.sh:ro

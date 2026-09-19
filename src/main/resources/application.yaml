@@ -44,6 +44,9 @@ security:
       - http://localhost:*
       - https://localhost:*
       - https://eco-knock-fe.vercel.app
+      - https://eco-knock-fe-*.vercel.app
+      - https://knock.econovation.kr
+
     allowed-admin-origins:
       - http://localhost:*
       - https://localhost:*
