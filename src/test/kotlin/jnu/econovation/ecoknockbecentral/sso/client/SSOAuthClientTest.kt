@@ -8,6 +8,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.web.client.RestClient
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 
@@ -61,7 +62,8 @@ class SSOAuthClientTest {
                 loginPageBaseUrl = "http://127.0.0.1:1",
                 gatewayPassportUrl = "http://localhost:${server.address.port}/api/eco-knock",
                 clientId = "client-id",
-            )
+            ),
+            RestClient.builder(),
         )
 
         val response = client.getPassport("sso-access-token")
@@ -81,7 +83,8 @@ class SSOAuthClientTest {
                 loginPageBaseUrl = "http://127.0.0.1:1",
                 gatewayPassportUrl = "http://localhost:${server.address.port}/api/eco-knock",
                 clientId = "client-id",
-            )
+            ),
+            RestClient.builder(),
         )
 
         assertThatThrownBy { client.getPassport("invalid-token") }

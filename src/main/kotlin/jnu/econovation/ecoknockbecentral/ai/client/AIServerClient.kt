@@ -14,13 +14,14 @@ import java.time.Duration
 
 @Component
 class AIServerClient(
-    private val config: AIServerConfig
+    config: AIServerConfig,
+    restClientBuilder: RestClient.Builder,
 ) {
     companion object {
         private const val CHAT_PATH = "/chat"
     }
 
-    private val client = RestClient.builder()
+    private val client = restClientBuilder
         .baseUrl(config.baseUrl)
         .requestFactory(SimpleClientHttpRequestFactory().apply {
             setConnectTimeout(Duration.ofSeconds(3))

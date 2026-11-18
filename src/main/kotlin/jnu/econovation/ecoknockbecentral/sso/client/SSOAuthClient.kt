@@ -16,13 +16,13 @@ import org.springframework.web.client.body
 @Component
 class SSOAuthClient(
     config: SSOConfig,
+    restClientBuilder: RestClient.Builder,
 ) {
     companion object {
         private val logger = KotlinLogging.logger {}
     }
 
-    private val client: RestClient = RestClient.builder()
-        .build()
+    private val client: RestClient = restClientBuilder.build()
     private val gatewayPassportUrl = config.gatewayPassportUrl
 
     fun getPassport(accessToken: String): SSOPassportResponse {
