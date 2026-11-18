@@ -16,3 +16,9 @@ scrape_configs:
         labels:
           environment: prod
           service: embedded
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [ "localhost:9090" ]
+        labels:
+          environment: prod
