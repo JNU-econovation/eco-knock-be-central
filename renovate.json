@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "docker:pinDigests"],
+  "timezone": "Asia/Seoul",
+  "labels": ["dependencies"],
+  "enabledManagers": ["dockerfile"],
+  "packageRules": [
+    {
+      "description": "JDK 빌드·런타임 이미지를 LTS 25 안에서만 함께 올린다. main 머지가 곧 배포라 자동 머지하지 않는다.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["eclipse-temurin"],
+      "groupName": "temurin 25",
+      "allowedVersions": "/^25\\./",
+      "automerge": false
+    }
+  ]
+}
