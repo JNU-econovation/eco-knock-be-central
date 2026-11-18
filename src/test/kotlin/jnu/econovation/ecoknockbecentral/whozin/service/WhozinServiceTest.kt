@@ -6,6 +6,7 @@ import mu.KotlinLogging
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
@@ -23,6 +24,11 @@ import java.time.LocalDate
     ]
 )
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
+@DisabledIfEnvironmentVariable(
+    named = "CI",
+    matches = "true",
+    disabledReason = "실제 Whozin API와 토큰이 필요하다. fork PR에서는 secret을 쓸 수 없어 CI에서는 건너뛴다.",
+)
 class WhozinServiceTest(
     private val whozinService: WhozinService,
 ) {
