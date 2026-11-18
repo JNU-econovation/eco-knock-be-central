@@ -284,6 +284,12 @@ sh ./deploy/prod/deploy.sh
 
 배포 스크립트는 저장소를 갱신한 뒤 운영 Compose를 실행합니다. Docker image 빌드 위치와 배포 대상은 실제 운영 인프라의 Compose 실행 환경에 맞춰 관리해야 하며, README는 저장소의 현재 스크립트 동작만 보장합니다.
 
+### JDK 이미지
+
+`deploy/prod/Dockerfile`은 `eclipse-temurin` 빌드·런타임 이미지를 패치 버전과 digest까지 고정합니다. 버전 갱신은 Renovate(`renovate.json`)가 JDK 25 안에서 PR로 올리며, 자동 머지하지 않습니다.
+
+런타임 이미지는 CVE-2026-114938(Java2Shell) 임시 완화로 `JAVA_TOOL_OPTIONS=-XX:-UseBASE64Intrinsics`를 설정합니다. 수정이 포함된 Temurin 빌드로 올린 뒤 제거합니다.
+
 ### 로컬 실행과 테스트
 
 ```bash
