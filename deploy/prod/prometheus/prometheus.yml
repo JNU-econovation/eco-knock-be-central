@@ -34,3 +34,9 @@ scrape_configs:
       - targets: [ "cadvisor:8080" ]
         labels:
           environment: prod
+
+  - job_name: postgres
+    static_configs:
+      - targets: [ "postgres-exporter:9187" ]
+        labels:
+          environment: prod

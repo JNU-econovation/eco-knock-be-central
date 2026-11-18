@@ -111,6 +111,22 @@ services:
       - /dev/disk/:/dev/disk:ro
     restart: unless-stopped
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.21.0
+    container_name: eco-knock-prod-postgres-exporter
+    environment:
+      DATA_SOURCE_URI: postgres:5432/ecoknock?sslmode=disable
+      DATA_SOURCE_USER: ${PROD_POSTGRES_USERNAME}
+      DATA_SOURCE_PASS: ${PROD_POSTGRES_PASSWORD}
+    command:
+      - --collector.long_running_transactions
+      - --collector.stat_activity_autovacuum
+      - --collector.stat_checkpointer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:12.1.0
     container_name: eco-knock-prod-grafana
