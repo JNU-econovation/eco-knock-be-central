@@ -14,7 +14,8 @@ import org.springframework.web.client.body
 
 @Component
 class WhozinClient(
-    val config: WhozinConfig
+    val config: WhozinConfig,
+    restClientBuilder: RestClient.Builder,
 ) {
     companion object {
         private const val MEMBERS_PATH = "open-api/v1/members"
@@ -22,7 +23,7 @@ class WhozinClient(
         private val logger = KotlinLogging.logger {}
     }
 
-    private val client: RestClient = RestClient.builder()
+    private val client: RestClient = restClientBuilder
         .baseUrl(config.baseUrl)
         .build()
 

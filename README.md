@@ -264,7 +264,7 @@ Compose 명령은 첫 번째 인자로 전달할 수 있습니다.
 
 ### 운영 환경
 
-운영 Compose는 Spring Boot 애플리케이션, PostgreSQL, Redis, Prometheus, Grafana를 함께 실행하고 `prod` profile을 사용합니다.
+운영 Compose는 Spring Boot 애플리케이션, PostgreSQL, Redis, Prometheus, Grafana와 모니터링 exporter(node-exporter, cAdvisor, postgres-exporter, redis-exporter, blackbox-exporter)를 함께 실행하고 `prod` profile을 사용합니다.
 
 ```powershell
 .\deploy\prod\prod.ps1
@@ -282,7 +282,44 @@ Compose 명령은 첫 번째 인자로 전달할 수 있습니다.
 sh ./deploy/prod/deploy.sh
 ```
 
-배포 스크립트는 저장소를 갱신한 뒤 운영 Compose를 실행합니다. Docker image 빌드 위치와 배포 대상은 실제 운영 인프라의 Compose 실행 환경에 맞춰 관리해야 하며, README는 저장소의 현재 스크립트 동작만 보장합니다.
+배포 스크립트는 저장소를 갱신한 뒤 운영 Compose를 실행합니다.
+
+- `APP_IMAGE`가 없으면 운영 서버에서 `deploy/prod/Dockerfile`로 app 이미지를 빌드합니다(`--build`).
+- `APP_IMAGE`가 있으면 빌드하지 않고 그 이미지를 `pull`한 뒤 `--no-build`로 실행합니다. CI/CD가 이 방식을 사용합니다.
+
+```bash
+APP_IMAGE=ghcr.io/jnu-econovation/eco-knock-be-central:sha-<커밋 7자리> sh ./deploy/prod/deploy.sh up
+```
+
+이전 커밋 이미지 태그로 같은 명령을 실행하면 롤백됩니다.
+
+### JDK 이미지
+
+`deploy/prod/Dockerfile`은 `eclipse-temurin` 빌드·런타임 이미지를 패치 버전과 digest까지 고정합니다. 버전 갱신은 Dependabot(`.github/dependabot.yml`)이 JDK 25 안에서 tag와 digest를 함께 PR로 올리며, 자동 머지하지 않습니다.
+
+런타임 이미지는 CVE-2026-114938(Java2Shell) 임시 완화로 `JAVA_TOOL_OPTIONS=-XX:-UseBASE64Intrinsics`를 설정합니다. 수정이 포함된 Temurin 빌드로 올린 뒤 제거합니다.
+
+### CI/CD
+
+`.github/workflows/ci-cd.yml`이 다음을 수행합니다.
+
+| job | 실행 조건 | 내용 |
+|---|---|---|
+| `test` | PR, `main` push | PostgreSQL·Redis service container와 더미 환경 변수로 `./gradlew test`. 결과는 참고용이며 publish·deploy를 막지 않습니다. |
+| `docker-build` | PR | `linux/amd64` 이미지 빌드만 확인(push 안 함) |
+| `publish` | upstream `main` push, 수동 실행 | GHCR에 `sha-<커밋>`과 `main` 태그로 push |
+| `deploy` | `publish` 이후 | SSH로 운영 서버에서 `APP_IMAGE=... deploy.sh up` 실행 후 readiness 확인 |
+
+`deploy` job은 GitHub `production` environment의 다음 secret을 사용합니다.
+
+| Secret | 설명 |
+|---|---|
+| `PROD_SSH_HOST` / `PROD_SSH_PORT` / `PROD_SSH_USER` | 운영 서버 SSH 접속 정보 |
+| `PROD_SSH_KEY` | 배포용 SSH 개인키 |
+| `PROD_SSH_KNOWN_HOSTS` | 운영 서버 host key(`ssh-keyscan` 결과) |
+| `PROD_DEPLOY_PATH` | 운영 서버의 저장소 경로 |
+
+운영 서버는 GHCR 이미지를 받을 수 있어야 합니다. 패키지가 private이면 서버에서 `read:packages` 권한 토큰으로 `docker login ghcr.io`를 한 번 실행합니다.
 
 ### 로컬 실행과 테스트
 
@@ -624,7 +661,29 @@ Actuator는 management 포트 `18082`에서 health, info, prometheus 지표를 �
 - Grafana prod: `PROD_GRAFANA_HOST`
 - Grafana 계정: `admin` / `ADMIN_MASTER_PASSWORD`
 
-Grafana는 datasource와 `Eco Knock Performance` dashboard를 자동 provisioning합니다. 대시보드에는 HTTP 요청·p95·5xx, JVM/CPU/heap, Hikari connection, gRPC, polling·queue, 자동제어, 공기질 aggregate incremental 집계 지표가 포함됩니다.
+앱은 `http.server.requests`, `http.client.requests`, `eco.knock.grpc.client`, `spring.data.repository.invocations`, `hikaricp.connections.acquire`의 histogram을 내보내고, HTTP 서버 요청에는 `100ms`, `300ms`, `1s` SLO 버킷을 추가합니다. 모든 지표에는 `application=eco-knock-be-central` 태그가 붙습니다. AI 서버·SSO·Whozin 호출은 Spring의 `RestClient.Builder`를 사용하므로 `http_client_requests_seconds`로 수집됩니다.
+
+prod에서는 다음 exporter도 scrape합니다. 외부 포트는 공개하지 않습니다.
+
+| job | 대상 | 비고 |
+|---|---|---|
+| `node` | node-exporter (`host.docker.internal:9100`) | host 네트워크로 실행하고 `NODE_EXPORTER_LISTEN_ADDRESS`(기본 `172.17.0.1:9100`, docker 브리지 게이트웨이)에만 바인딩합니다. 방화벽이 docker 대역에서 이 포트로 오는 접근을 막으면 허용해야 합니다. |
+| `cadvisor` | cAdvisor | 컨테이너별 CPU·메모리·네트워크·FS·OOM |
+| `postgres` | postgres-exporter | `PROD_POSTGRES_USERNAME` / `PROD_POSTGRES_PASSWORD` 사용 |
+| `redis` | redis-exporter | |
+| `blackbox-reachable`, `blackbox-health` | blackbox-exporter | `PROD_THIS_SERVER_URL`, `PROD_GRAFANA_HOST/api/health`, `AI_SERVER_HOST`, SSO 로그인 페이지, econovation gateway, Whozin 응답과 TLS 만료일 |
+| `prometheus` | Prometheus 자체 | |
+
+Grafana는 uid `prometheus` datasource와 `Eco Knock` 폴더의 대시보드 4개를 자동 provisioning합니다.
+
+| 대시보드 | 내용 |
+|---|---|
+| Eco Knock Overview | 서비스 UP, 요청·5xx·p95/p99·Apdex, heap·host 자원, 디스크 고갈 예측, TLS 만료, 가용성 SLO(99.5%)와 에러 버짓, 재시작·OOM |
+| Eco Knock Application | HTTP 서버(상태·URI·지연 분포·401/403), 외부 HTTP 호출, gRPC, JVM 메모리·GC·스레드·FD, Hikari, Spring Data 리포지토리, 로그 레벨 |
+| Eco Knock Infrastructure | 호스트 CPU·메모리·디스크·네트워크·PSI·시스템, 컨테이너, PostgreSQL, Redis, 외부 의존성 probe, embedded 서비스, Prometheus 자체 |
+| Eco Knock Pipelines | polling·queue 실패, 자동제어, 공기질 aggregate 집계, embedded 상태 |
+
+dev Compose에는 exporter가 없으므로 dev Grafana의 인프라 패널은 비어 있습니다.
 
 ## gRPC
 
