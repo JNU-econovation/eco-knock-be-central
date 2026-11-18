@@ -282,13 +282,44 @@ Compose 명령은 첫 번째 인자로 전달할 수 있습니다.
 sh ./deploy/prod/deploy.sh
 ```
 
-배포 스크립트는 저장소를 갱신한 뒤 운영 Compose를 실행합니다. Docker image 빌드 위치와 배포 대상은 실제 운영 인프라의 Compose 실행 환경에 맞춰 관리해야 하며, README는 저장소의 현재 스크립트 동작만 보장합니다.
+배포 스크립트는 저장소를 갱신한 뒤 운영 Compose를 실행합니다.
+
+- `APP_IMAGE`가 없으면 운영 서버에서 `deploy/prod/Dockerfile`로 app 이미지를 빌드합니다(`--build`).
+- `APP_IMAGE`가 있으면 빌드하지 않고 그 이미지를 `pull`한 뒤 `--no-build`로 실행합니다. CI/CD가 이 방식을 사용합니다.
+
+```bash
+APP_IMAGE=ghcr.io/jnu-econovation/eco-knock-be-central:sha-<커밋 7자리> sh ./deploy/prod/deploy.sh up
+```
+
+이전 커밋 이미지 태그로 같은 명령을 실행하면 롤백됩니다.
 
 ### JDK 이미지
 
 `deploy/prod/Dockerfile`은 `eclipse-temurin` 빌드·런타임 이미지를 패치 버전과 digest까지 고정합니다. 버전 갱신은 Renovate(`renovate.json`)가 JDK 25 안에서 PR로 올리며, 자동 머지하지 않습니다.
 
 런타임 이미지는 CVE-2026-114938(Java2Shell) 임시 완화로 `JAVA_TOOL_OPTIONS=-XX:-UseBASE64Intrinsics`를 설정합니다. 수정이 포함된 Temurin 빌드로 올린 뒤 제거합니다.
+
+### CI/CD
+
+`.github/workflows/ci-cd.yml`이 다음을 수행합니다.
+
+| job | 실행 조건 | 내용 |
+|---|---|---|
+| `test` | PR, `main` push | PostgreSQL·Redis service container와 더미 환경 변수로 `./gradlew test`. 결과는 참고용이며 publish·deploy를 막지 않습니다. |
+| `docker-build` | PR | `linux/amd64` 이미지 빌드만 확인(push 안 함) |
+| `publish` | upstream `main` push, 수동 실행 | GHCR에 `sha-<커밋>`과 `main` 태그로 push |
+| `deploy` | `publish` 이후 | SSH로 운영 서버에서 `APP_IMAGE=... deploy.sh up` 실행 후 readiness 확인 |
+
+`deploy` job은 GitHub `production` environment의 다음 secret을 사용합니다.
+
+| Secret | 설명 |
+|---|---|
+| `PROD_SSH_HOST` / `PROD_SSH_PORT` / `PROD_SSH_USER` | 운영 서버 SSH 접속 정보 |
+| `PROD_SSH_KEY` | 배포용 SSH 개인키 |
+| `PROD_SSH_KNOWN_HOSTS` | 운영 서버 host key(`ssh-keyscan` 결과) |
+| `PROD_DEPLOY_PATH` | 운영 서버의 저장소 경로 |
+
+운영 서버는 GHCR 이미지를 받을 수 있어야 합니다. 패키지가 private이면 서버에서 `read:packages` 권한 토큰으로 `docker login ghcr.io`를 한 번 실행합니다.
 
 ### 로컬 실행과 테스트
 
