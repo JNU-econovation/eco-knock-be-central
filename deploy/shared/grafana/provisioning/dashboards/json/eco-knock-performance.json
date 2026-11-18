@@ -1,126 +1,289 @@
 {
   "uid": "eco-knock-performance",
-  "title": "Eco Knock Performance",
+  "title": "Eco Knock Pipelines",
   "timezone": "browser",
   "schemaVersion": 41,
-  "version": 2,
+  "version": 3,
   "refresh": "15s",
   "panels": [
-    {
-      "id": 1,
-      "title": "HTTP request rate",
-      "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{job=\"eco-knock-app\"}[5m]))", "legendFormat": "requests/s" }],
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 }
-    },
-    {
-      "id": 2,
-      "title": "HTTP p95 latency",
-      "type": "timeseries",
-      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"eco-knock-app\"}[5m])))", "legendFormat": "p95" }],
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 }
-    },
-    {
-      "id": 3,
-      "title": "HTTP 5xx ratio",
-      "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{job=\"eco-knock-app\",status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"eco-knock-app\"}[5m]))", "legendFormat": "5xx ratio" }],
-      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 }
-    },
-    {
-      "id": 4,
-      "title": "JVM heap used",
-      "type": "timeseries",
-      "targets": [{ "expr": "sum(jvm_memory_used_bytes{job=\"eco-knock-app\",area=\"heap\"})", "legendFormat": "heap" }],
-      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 }
-    },
-    {
-      "id": 5,
-      "title": "Process CPU",
-      "type": "timeseries",
-      "targets": [{ "expr": "process_cpu_usage{job=\"eco-knock-app\"}", "legendFormat": "CPU" }],
-      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 }
-    },
-    {
-      "id": 6,
-      "title": "Hikari active connections",
-      "type": "timeseries",
-      "targets": [{ "expr": "hikaricp_connections_active{job=\"eco-knock-app\"}", "legendFormat": "active" }],
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 }
-    },
     {
       "id": 7,
       "title": "gRPC client duration p95",
       "type": "timeseries",
-      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, client, operation) (rate(eco_knock_grpc_client_seconds_bucket{job=\"eco-knock-app\"}[5m])))", "legendFormat": "{{client}} {{operation}}" }],
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, client, operation) (rate(eco_knock_grpc_client_seconds_bucket{job=\"eco-knock-app\"}[5m])))",
+          "legendFormat": "{{client}} {{operation}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 8,
       "title": "Polling and queue failures",
       "type": "timeseries",
       "targets": [
-        { "expr": "sum by (queue) (rate(eco_knock_queue_processing_seconds_count{job=\"eco-knock-app\",outcome=\"failure\"}[5m]))", "legendFormat": "queue {{queue}}" },
-        { "expr": "sum by (client) (rate(eco_knock_grpc_client_seconds_count{job=\"eco-knock-app\",outcome=\"failure\"}[5m]))", "legendFormat": "grpc {{client}}" }
+        {
+          "expr": "sum by (queue) (rate(eco_knock_queue_processing_seconds_count{job=\"eco-knock-app\",outcome=\"failure\"}[5m]))",
+          "legendFormat": "queue {{queue}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "expr": "sum by (client) (rate(eco_knock_grpc_client_seconds_count{job=\"eco-knock-app\",outcome=\"failure\"}[5m]))",
+          "legendFormat": "grpc {{client}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 }
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 9,
       "title": "Auto control actions",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (decision, outcome) (rate(eco_knock_auto_control_action_seconds_count{job=\"eco-knock-app\"}[5m]))", "legendFormat": "{{decision}} {{outcome}}" }],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 }
+      "targets": [
+        {
+          "expr": "sum by (decision, outcome) (rate(eco_knock_auto_control_action_seconds_count{job=\"eco-knock-app\"}[5m]))",
+          "legendFormat": "{{decision}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 10,
       "title": "Air quality aggregation duration",
       "type": "timeseries",
-      "targets": [{ "expr": "sum by (resolution, outcome) (rate(eco_knock_air_quality_aggregation_seconds_sum{job=\"eco-knock-app\"}[5m])) / sum by (resolution, outcome) (rate(eco_knock_air_quality_aggregation_seconds_count{job=\"eco-knock-app\"}[5m]))", "legendFormat": "{{resolution}} {{outcome}}" }],
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 }
+      "targets": [
+        {
+          "expr": "sum by (resolution, outcome) (rate(eco_knock_air_quality_aggregation_seconds_sum{job=\"eco-knock-app\"}[5m])) / sum by (resolution, outcome) (rate(eco_knock_air_quality_aggregation_seconds_count{job=\"eco-knock-app\"}[5m]))",
+          "legendFormat": "{{resolution}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 11,
       "title": "Embedded service status",
       "type": "stat",
-      "targets": [{ "expr": "max(up{job=\"eco-knock-embedded\"})", "legendFormat": "embedded" }],
+      "targets": [
+        {
+          "expr": "max(up{job=\"eco-knock-embedded\"})",
+          "legendFormat": "embedded",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
       "fieldConfig": {
         "defaults": {
-          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } } }],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN"
+                },
+                "1": {
+                  "text": "UP"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 32 }
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 12,
       "title": "Embedded process CPU",
       "type": "timeseries",
-      "targets": [{ "expr": "sum(rate(process_cpu_seconds_total{job=\"eco-knock-embedded\"}[5m]))", "legendFormat": "CPU" }],
-      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 32 }
+      "targets": [
+        {
+          "expr": "sum(rate(process_cpu_seconds_total{job=\"eco-knock-embedded\"}[5m]))",
+          "legendFormat": "CPU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 13,
       "title": "Embedded process memory",
       "type": "timeseries",
-      "targets": [{ "expr": "process_resident_memory_bytes{job=\"eco-knock-embedded\"}", "legendFormat": "memory" }],
-      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 32 }
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"eco-knock-embedded\"}",
+          "legendFormat": "memory",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
     },
     {
       "id": 14,
       "title": "Embedded goroutines",
       "type": "timeseries",
-      "targets": [{ "expr": "go_goroutines{job=\"eco-knock-embedded\"}", "legendFormat": "goroutines" }],
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 32 }
+      "targets": [
+        {
+          "expr": "go_goroutines{job=\"eco-knock-embedded\"}",
+          "legendFormat": "goroutines",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      }
+    }
+  ],
+  "description": "공기질·조도 파이프라인과 embedded 연동 지표. 서버 공통 지표는 Overview / Application / Infrastructure 대시보드로 옮겼다.",
+  "tags": [
+    "eco-knock"
+  ],
+  "links": [
+    {
+      "title": "Eco Knock",
+      "type": "dashboards",
+      "tags": [
+        "eco-knock"
+      ],
+      "asDropdown": true,
+      "includeVars": false,
+      "keepTime": true
     }
   ]
 }

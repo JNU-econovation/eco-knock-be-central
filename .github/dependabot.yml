@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # JDK 빌드·런타임 이미지만 LTS 25 안에서 함께 올린다. main 머지가 곧 배포라 자동 머지하지 않는다.
+  - package-ecosystem: docker
+    directory: /deploy/prod
+    schedule:
+      interval: weekly
+      timezone: Asia/Seoul
+    labels:
+      - dependencies
+    groups:
+      temurin-25:
+        patterns:
+          - eclipse-temurin
+    ignore:
+      - dependency-name: eclipse-temurin
+        update-types:
+          - version-update:semver-major

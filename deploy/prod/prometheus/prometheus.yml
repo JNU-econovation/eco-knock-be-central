@@ -16,3 +16,71 @@ scrape_configs:
         labels:
           environment: prod
           service: embedded
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [ "localhost:9090" ]
+        labels:
+          environment: prod
+
+  - job_name: node
+    static_configs:
+      - targets: [ "host.docker.internal:9100" ]
+        labels:
+          environment: prod
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: [ "cadvisor:8080" ]
+        labels:
+          environment: prod
+
+  - job_name: postgres
+    static_configs:
+      - targets: [ "postgres-exporter:9187" ]
+        labels:
+          environment: prod
+
+  - job_name: redis
+    static_configs:
+      - targets: [ "redis-exporter:9121" ]
+        labels:
+          environment: prod
+
+  - job_name: blackbox-reachable
+    metrics_path: /probe
+    params:
+      module: [ http_reachable ]
+    static_configs:
+      - targets: [ "__PROD_THIS_SERVER_URL__" ]
+        labels: { environment: prod, probe: api }
+      - targets: [ "__AI_SERVER_HOST__" ]
+        labels: { environment: prod, probe: ai-server }
+      - targets: [ "https://auth-econovation-fe-abc.vercel.app" ]
+        labels: { environment: prod, probe: sso-login }
+      - targets: [ "https://api.econovation.kr" ]
+        labels: { environment: prod, probe: econovation-gateway }
+      - targets: [ "https://be.whozin.econovation.kr" ]
+        labels: { environment: prod, probe: whozin }
+    relabel_configs: &blackbox_relabel
+      - source_labels: [ __address__ ]
+        target_label: __param_target
+      - source_labels: [ __param_target ]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  - job_name: blackbox-health
+    metrics_path: /probe
+    params:
+      module: [ http_2xx ]
+    static_configs:
+      - targets: [ "__PROD_GRAFANA_HOST__/api/health" ]
+        labels: { environment: prod, probe: grafana }
+    relabel_configs: *blackbox_relabel
+
+  - job_name: blackbox-exporter
+    static_configs:
+      - targets: [ "blackbox-exporter:9115" ]
+        labels:
+          environment: prod

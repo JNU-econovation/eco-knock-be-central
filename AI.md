@@ -26,11 +26,15 @@ Below is the list of repository-local skills that can be used in this project.
 
 Apply this workflow to every task that changes `src/main`. Do not apply it to test-only, documentation-only, or build-only work.
 
-1. The coordinator records pre-existing dirty paths, then creates a developer agent. The developer uses `$eco-knock-maintainer` to implement the requirement and run the narrowest relevant tests.
-2. The developer must not declare completion. It returns a handoff containing the requirement, developer-owned production file list, exact diff, design decisions, and test commands/results.
-3. The coordinator automatically creates a fresh, read-only verifier sub-agent. The verifier uses `$eco-knock-style-verifier` and receives only the handoff and current worktree; do not pass the developer's conclusion or prior reasoning.
-4. The verifier reports maintainer checklist results and findings. If it reports a blocking finding, the coordinator sends only those findings to the same developer agent for minimal refactoring and retesting.
-5. The coordinator automatically creates a new fresh verifier sub-agent after each refactor. Do not reuse the prior verifier's context.
-6. Complete only when the final verifier reports zero blocking findings and the relevant tests pass. After two refactor cycles, stop and report the remaining risks instead of declaring completion.
+The orchestrator (the main agent talking to the user) implements the change itself. Do not create a separate developer agent.
 
-The verifier never edits files. It reviews only developer-owned production changes and must not request cleanup of paths that were dirty before the task began.
+1. The orchestrator records pre-existing dirty paths, then uses `$eco-knock-maintainer` to implement the requirement and run the narrowest relevant tests.
+2. The orchestrator does not declare completion yet. It prepares a handoff containing the requirement, orchestrator-owned production file list, exact diff, design decisions, and test commands/results.
+3. The orchestrator automatically creates a fresh, read-only verifier sub-agent. The verifier uses `$eco-knock-style-verifier` and receives only the handoff and current worktree; do not pass the orchestrator's conclusion or prior reasoning.
+4. The verifier reports maintainer checklist results and findings. If it reports a blocking finding, the orchestrator applies only the minimal refactoring those findings require and reruns the relevant tests.
+   - To prevent over-engineering, the orchestrator may reject a finding that is excessive: it asks for changes beyond the requirement, adds abstraction or defensive code the requirement does not need, or is not backed by a concrete `$eco-knock-maintainer` rule or nearby code precedent.
+   - A rejected finding no longer counts as blocking. The orchestrator must list each rejected finding with a one-line reason in its final report to the user.
+5. The orchestrator automatically creates a new fresh verifier sub-agent after each refactor. Do not reuse the prior verifier's context.
+6. Complete only when the final verifier reports zero blocking findings (excluding findings rejected under step 4) and the relevant tests pass. After two refactor cycles, stop and report the remaining risks instead of declaring completion.
+
+The verifier never edits files. It reviews only orchestrator-owned production changes and must not request cleanup of paths that were dirty before the task began.

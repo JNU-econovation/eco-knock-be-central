@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.web.client.RestClient
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -43,7 +44,8 @@ class AIServerClientTest {
             AIServerConfig(
                 baseUrl = "http://localhost:${server.address.port}",
                 timeout = Duration.ofSeconds(3),
-            )
+            ),
+            RestClient.builder(),
         )
 
         client.chat("현재 질문")

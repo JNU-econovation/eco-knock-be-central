@@ -1,0 +1,18 @@
+modules:
+  # 서비스가 살아 있는지 본다. 루트 경로가 인증·라우팅 때문에 4xx를 줄 수 있으므로 4xx도 응답으로 인정하고,
+  # 5xx·타임아웃·TLS 오류만 실패로 본다.
+  http_reachable:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true
+      valid_status_codes: [ 200, 201, 204, 301, 302, 307, 308, 400, 401, 403, 404, 405 ]
+
+  # 헬스 엔드포인트처럼 2xx만 정상으로 보는 대상
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true
