@@ -105,6 +105,8 @@ management:
         hikaricp.connections.acquire: true
       slo:
         http.server.requests: 100ms,300ms,1s
+    tags:
+      application: eco-knock-be-central
   endpoints:
     web:
       exposure:
