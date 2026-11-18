@@ -264,7 +264,7 @@ Compose 명령은 첫 번째 인자로 전달할 수 있습니다.
 
 ### 운영 환경
 
-운영 Compose는 Spring Boot 애플리케이션, PostgreSQL, Redis, Prometheus, Grafana를 함께 실행하고 `prod` profile을 사용합니다.
+운영 Compose는 Spring Boot 애플리케이션, PostgreSQL, Redis, Prometheus, Grafana와 모니터링 exporter(node-exporter, cAdvisor, postgres-exporter, redis-exporter, blackbox-exporter)를 함께 실행하고 `prod` profile을 사용합니다.
 
 ```powershell
 .\deploy\prod\prod.ps1
@@ -661,7 +661,29 @@ Actuator는 management 포트 `18082`에서 health, info, prometheus 지표를 �
 - Grafana prod: `PROD_GRAFANA_HOST`
 - Grafana 계정: `admin` / `ADMIN_MASTER_PASSWORD`
 
-Grafana는 datasource와 `Eco Knock Performance` dashboard를 자동 provisioning합니다. 대시보드에는 HTTP 요청·p95·5xx, JVM/CPU/heap, Hikari connection, gRPC, polling·queue, 자동제어, 공기질 aggregate incremental 집계 지표가 포함됩니다.
+앱은 `http.server.requests`, `http.client.requests`, `eco.knock.grpc.client`, `spring.data.repository.invocations`, `hikaricp.connections.acquire`의 histogram을 내보내고, HTTP 서버 요청에는 `100ms`, `300ms`, `1s` SLO 버킷을 추가합니다. 모든 지표에는 `application=eco-knock-be-central` 태그가 붙습니다. AI 서버·SSO·Whozin 호출은 Spring의 `RestClient.Builder`를 사용하므로 `http_client_requests_seconds`로 수집됩니다.
+
+prod에서는 다음 exporter도 scrape합니다. 외부 포트는 공개하지 않습니다.
+
+| job | 대상 | 비고 |
+|---|---|---|
+| `node` | node-exporter (`host.docker.internal:9100`) | host 네트워크로 실행하고 `NODE_EXPORTER_LISTEN_ADDRESS`(기본 `172.17.0.1:9100`, docker 브리지 게이트웨이)에만 바인딩합니다. 방화벽이 docker 대역에서 이 포트로 오는 접근을 막으면 허용해야 합니다. |
+| `cadvisor` | cAdvisor | 컨테이너별 CPU·메모리·네트워크·FS·OOM |
+| `postgres` | postgres-exporter | `PROD_POSTGRES_USERNAME` / `PROD_POSTGRES_PASSWORD` 사용 |
+| `redis` | redis-exporter | |
+| `blackbox-reachable`, `blackbox-health` | blackbox-exporter | `PROD_THIS_SERVER_URL`, `PROD_GRAFANA_HOST/api/health`, `AI_SERVER_HOST`, SSO 로그인 페이지, econovation gateway, Whozin 응답과 TLS 만료일 |
+| `prometheus` | Prometheus 자체 | |
+
+Grafana는 uid `prometheus` datasource와 `Eco Knock` 폴더의 대시보드 4개를 자동 provisioning합니다.
+
+| 대시보드 | 내용 |
+|---|---|
+| Eco Knock Overview | 서비스 UP, 요청·5xx·p95/p99·Apdex, heap·host 자원, 디스크 고갈 예측, TLS 만료, 가용성 SLO(99.5%)와 에러 버짓, 재시작·OOM |
+| Eco Knock Application | HTTP 서버(상태·URI·지연 분포·401/403), 외부 HTTP 호출, gRPC, JVM 메모리·GC·스레드·FD, Hikari, Spring Data 리포지토리, 로그 레벨 |
+| Eco Knock Infrastructure | 호스트 CPU·메모리·디스크·네트워크·PSI·시스템, 컨테이너, PostgreSQL, Redis, 외부 의존성 probe, embedded 서비스, Prometheus 자체 |
+| Eco Knock Pipelines | polling·queue 실패, 자동제어, 공기질 aggregate 집계, embedded 상태 |
+
+dev Compose에는 exporter가 없으므로 dev Grafana의 인프라 패널은 비어 있습니다.
 
 ## gRPC
 
