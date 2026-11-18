@@ -59,6 +59,9 @@ services:
     container_name: eco-knock-prod-prometheus
     environment:
       EMBEDDED_SERVER_HOST: ${EMBEDDED_SERVER_HOST}
+      PROD_THIS_SERVER_URL: ${PROD_THIS_SERVER_URL}
+      PROD_GRAFANA_HOST: ${PROD_GRAFANA_HOST}
+      AI_SERVER_HOST: ${AI_SERVER_HOST}
     command:
       - --storage.tsdb.retention.time=60d
     extra_hosts:
@@ -135,6 +138,15 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    restart: unless-stopped
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.29.1
+    container_name: eco-knock-prod-blackbox-exporter
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
     restart: unless-stopped
 
   grafana:
