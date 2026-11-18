@@ -5,7 +5,7 @@ services:
     build:
       context: ../..
       dockerfile: deploy/prod/Dockerfile
-    image: eco-knock-be-central:prod
+    image: ${APP_IMAGE:-eco-knock-be-central:prod}
     container_name: eco-knock-prod-app
     env_file:
       - ../../.env
