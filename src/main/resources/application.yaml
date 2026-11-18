@@ -103,6 +103,8 @@ management:
         eco.knock.grpc.client: true
         spring.data.repository.invocations: true
         hikaricp.connections.acquire: true
+      slo:
+        http.server.requests: 100ms,300ms,1s
   endpoints:
     web:
       exposure:
