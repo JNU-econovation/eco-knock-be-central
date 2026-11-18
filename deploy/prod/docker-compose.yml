@@ -61,6 +61,8 @@ services:
       EMBEDDED_SERVER_HOST: ${EMBEDDED_SERVER_HOST}
     command:
       - --storage.tsdb.retention.time=60d
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ../shared/prometheus/startup.sh:/etc/prometheus/startup.sh:ro
@@ -68,6 +70,24 @@ services:
     depends_on:
       - app
     entrypoint: [ "sh", "/etc/prometheus/startup.sh" ]
+    restart: unless-stopped
+
+  # 호스트 네트워크·프로세스 지표를 그대로 보려면 host 네트워크가 필요하다.
+  # 외부 공개를 막기 위해 docker 브리지 게이트웨이 주소에만 바인딩한다.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: eco-knock-prod-node-exporter
+    command:
+      - --path.rootfs=/host
+      - --web.listen-address=${NODE_EXPORTER_LISTEN_ADDRESS:-172.17.0.1:9100}
+      - --collector.systemd
+      - --collector.processes
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+|var/lib/containers/.+)($$|/)
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
     restart: unless-stopped
 
   grafana:
