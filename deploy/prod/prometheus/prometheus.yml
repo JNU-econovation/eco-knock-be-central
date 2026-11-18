@@ -40,3 +40,9 @@ scrape_configs:
       - targets: [ "postgres-exporter:9187" ]
         labels:
           environment: prod
+
+  - job_name: redis
+    static_configs:
+      - targets: [ "redis-exporter:9121" ]
+        labels:
+          environment: prod

@@ -127,6 +127,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.97.0
+    container_name: eco-knock-prod-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:12.1.0
     container_name: eco-knock-prod-grafana
