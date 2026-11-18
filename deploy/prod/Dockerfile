@@ -13,6 +13,10 @@ RUN ./gradlew --no-daemon bootJar
 
 FROM eclipse-temurin:25.0.5_8-jre@sha256:945247f9d092703e0c6be92243ef3c51640229e23ab34d353c8dcdc73e6cd4e6
 
+# CVE-2026-114938(Java2Shell) 임시 완화: HotSpot Base64 intrinsic 비활성화.
+# 수정 빌드(OpenJDK 25.0.5.1 이상에 대응하는 Temurin)로 올린 뒤 제거한다.
+ENV JAVA_TOOL_OPTIONS="-XX:-UseBASE64Intrinsics"
+
 WORKDIR /app
 
 COPY --from=build /workspace/build/libs/*.jar app.jar
