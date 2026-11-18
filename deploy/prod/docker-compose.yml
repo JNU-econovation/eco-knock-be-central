@@ -90,6 +90,27 @@ services:
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
     restart: unless-stopped
 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.61.0
+    container_name: eco-knock-prod-cadvisor
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.service
+      # 기본 비활성 목록을 덮어쓰므로 기본값(memory_numa, process, cpuset 등)도 함께 적는다.
+      - --disable_metrics=percpu,sched,tcp,udp,advtcp,hugetlb,referenced_memory,cpu_topology,resctrl,memory_numa,process,cpuset
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:12.1.0
     container_name: eco-knock-prod-grafana

@@ -28,3 +28,9 @@ scrape_configs:
       - targets: [ "host.docker.internal:9100" ]
         labels:
           environment: prod
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: [ "cadvisor:8080" ]
+        labels:
+          environment: prod
