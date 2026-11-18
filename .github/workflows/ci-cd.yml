@@ -143,3 +143,54 @@ jobs:
         run: |
           image="${IMAGE_NAME,,}:sha-${GITHUB_SHA::7}"
           echo "image=$image" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to production
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Pull image and restart
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+          SSH_USER: ${{ secrets.PROD_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+          APP_IMAGE: ${{ needs.publish.outputs.image }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" \
+            "cd '$DEPLOY_PATH' && APP_IMAGE='$APP_IMAGE' sh deploy/prod/deploy.sh up"
+
+      - name: Wait for readiness
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+          SSH_USER: ${{ secrets.PROD_SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" 'sh -s' <<'EOF'
+          for i in $(seq 1 30); do
+            status=$(docker exec eco-knock-prod-app bash -c 'exec 3<>/dev/tcp/127.0.0.1/18082 && printf "GET /actuator/health/readiness HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3 && head -n 1 <&3' 2>/dev/null || true)
+            case "$status" in
+              *" 200"*) echo "ready: $status"; exit 0 ;;
+            esac
+            echo "waiting for readiness ($i/30): ${status:-no response}"
+            sleep 5
+          done
+          echo "app did not become ready" >&2
+          docker logs --tail 200 eco-knock-prod-app >&2 || true
+          exit 1
+          EOF
