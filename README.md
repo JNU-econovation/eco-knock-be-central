@@ -295,7 +295,7 @@ APP_IMAGE=ghcr.io/jnu-econovation/eco-knock-be-central:sha-<커밋 7자리> sh .
 
 ### JDK 이미지
 
-`deploy/prod/Dockerfile`은 `eclipse-temurin` 빌드·런타임 이미지를 패치 버전과 digest까지 고정합니다. 버전 갱신은 Renovate(`renovate.json`)가 JDK 25 안에서 PR로 올리며, 자동 머지하지 않습니다.
+`deploy/prod/Dockerfile`은 `eclipse-temurin` 빌드·런타임 이미지를 패치 버전과 digest까지 고정합니다. 버전 갱신은 Dependabot(`.github/dependabot.yml`)이 JDK 25 안에서 tag와 digest를 함께 PR로 올리며, 자동 머지하지 않습니다.
 
 런타임 이미지는 CVE-2026-114938(Java2Shell) 임시 완화로 `JAVA_TOOL_OPTIONS=-XX:-UseBASE64Intrinsics`를 설정합니다. 수정이 포함된 Temurin 빌드로 올린 뒤 제거합니다.
 
