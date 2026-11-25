@@ -27,6 +27,10 @@ Use this skill when working on application code in `eco-knock-be-central`.
 - Preserve user or unrelated worktree changes. Never revert unrelated dirty files.
 - When adding an HTTP endpoint or changing an endpoint's authorization policy, ask the user whether `GUEST` should be added to the explicit guest allowlist. Do not add it unless the user explicitly approves.
 
+## Skill Maintenance
+
+- When the user points out a code-style or implementation problem during a task, fix it first. Then ask the user whether to add it as a rule to this skill (and to `$eco-knock-style-verifier` when the verifier should catch it). Do not edit the skill without the user's approval.
+
 ## Package Style
 
 General domains use simple layered packages:
@@ -94,6 +98,28 @@ val layout = overviewLayoutRepository.findByMemberId(member.id)
     ?: throw InternalServerException(
         IllegalStateException("id가 ${member.id}인 overview layout을 찾을 수 없음.")
     )
+```
+
+- Do not borrow another class's companion/static constant only because its value happens to match. When a value is shared across classes in a domain, put it in that domain's constant object at `{domain}/constant/{Domain}Constant.kt` (a Kotlin `object` with `const val`, like `AuthConstant` and `SSOConstant`). Reuse the existing constant object if one exists; create it only when it does not. Do not keep the shared value in a service/controller companion object. "Nearby code already does this" is not enough when the precedent sits in a different context:
+
+```kotlin
+// Bad: the admin home controller depends on the login URL service only to read "/admin".
+@GetMapping("/")
+fun root(): String {
+    return "redirect:${AdminLoginUrlService.ADMIN_HOME_PATH}"
+}
+```
+
+```kotlin
+// Good: the shared path lives in the admin domain's constant object.
+object AdminConstant {
+    const val ADMIN_HOME_PATH = "/admin"
+}
+
+@GetMapping("/")
+fun root(): String {
+    return "redirect:$ADMIN_HOME_PATH"
+}
 ```
 
 - Avoid silent correction of invalid input. Throw the owning domain exception.
