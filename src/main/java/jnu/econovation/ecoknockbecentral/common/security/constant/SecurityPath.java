@@ -4,6 +4,8 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
 public final class SecurityPath {
+    public static final String ROOT = "/";
+
     public static final String AUTH_SUCCESS = "/auth/success";
     public static final String AUTH_REISSUE = "/auth/reissue";
     public static final String AUTH_LOGOUT = "/auth/logout";

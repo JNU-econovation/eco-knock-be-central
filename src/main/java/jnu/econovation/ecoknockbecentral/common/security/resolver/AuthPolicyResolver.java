@@ -22,6 +22,7 @@ import static jnu.econovation.ecoknockbecentral.common.security.constant.Securit
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.OPENAPI_ALL;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.OPENAPI_JSON;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.OPENAPI_YAML;
+import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.ROOT;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.SCALAR;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.SCALAR_ALL;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.SSO_CALLBACK;
@@ -39,6 +40,7 @@ public class AuthPolicyResolver {
             AuthRule.skip(AUTH_GUEST, HttpMethod.POST),
             AuthRule.skip(AUTH_ADMIN, HttpMethod.POST),
             AuthRule.skip(AUTH_SUCCESS),
+            AuthRule.skip(ROOT, HttpMethod.GET),
             AuthRule.skip(ADMIN_LOGIN, HttpMethod.GET),
             AuthRule.skip(ADMIN_STATIC_CSS, HttpMethod.GET),
             AuthRule.skip(ADMIN_STATIC_JS, HttpMethod.GET),
