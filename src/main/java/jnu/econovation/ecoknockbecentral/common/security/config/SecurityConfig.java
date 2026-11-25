@@ -42,6 +42,7 @@ import static jnu.econovation.ecoknockbecentral.common.security.constant.Securit
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.OPENAPI_ALL;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.OPENAPI_JSON;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.OPENAPI_YAML;
+import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.ROOT;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.SCALAR;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.SCALAR_ALL;
 import static jnu.econovation.ecoknockbecentral.common.security.constant.SecurityPath.SSO_CALLBACK;
@@ -106,6 +107,7 @@ public class SecurityConfig {
                                 "/error",
                                 "/favicon.ico"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, ROOT).permitAll()
                         .requestMatchers(HttpMethod.GET, ADMIN_LOGIN).permitAll()
                         .requestMatchers(HttpMethod.GET, ADMIN_STATIC_CSS, ADMIN_STATIC_JS).permitAll()
                         .requestMatchers(HttpMethod.POST, ADMIN_LOGIN_MASTER).permitAll()

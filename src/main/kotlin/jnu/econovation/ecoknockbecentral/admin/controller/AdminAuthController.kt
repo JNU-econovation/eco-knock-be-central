@@ -3,6 +3,7 @@ package jnu.econovation.ecoknockbecentral.admin.controller
 import io.swagger.v3.oas.annotations.Hidden
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import jnu.econovation.ecoknockbecentral.admin.constant.AdminConstant.ADMIN_HOME_PATH
 import jnu.econovation.ecoknockbecentral.admin.service.AdminLoginUrlService
 import jnu.econovation.ecoknockbecentral.auth.config.AuthPolicyConfig
 import jnu.econovation.ecoknockbecentral.auth.constant.AuthConstant.ACCESS_TOKEN
@@ -67,7 +68,7 @@ class AdminAuthController(
             authPolicyConfig.refreshTokenTTL.toSeconds().toInt(),
         )
 
-        return "redirect:${AdminLoginUrlService.ADMIN_HOME_PATH}"
+        return "redirect:$ADMIN_HOME_PATH"
     }
 
     @PostMapping("/logout")

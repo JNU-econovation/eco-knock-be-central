@@ -1,5 +1,6 @@
 package jnu.econovation.ecoknockbecentral.admin.service
 
+import jnu.econovation.ecoknockbecentral.admin.constant.AdminConstant.ADMIN_HOME_PATH
 import jnu.econovation.ecoknockbecentral.sso.resolver.SSORedirectUrlResolver
 import jnu.econovation.ecoknockbecentral.common.security.config.UriSecurityConfig
 import org.springframework.stereotype.Service
@@ -10,10 +11,6 @@ class AdminLoginUrlService(
     private val redirectUrlResolver: SSORedirectUrlResolver,
     private val uriSecurityConfig: UriSecurityConfig,
 ) {
-    companion object {
-        const val ADMIN_HOME_PATH = "/admin"
-    }
-
     fun ssoLoginUrl(): String? {
         val redirectUrl = adminHomeUrl()
 

@@ -77,6 +77,15 @@ class AdminOverviewShortcutControllerE2ETest(
     }
 
     @Test
+    @DisplayName("루트 경로는 인증 없이 관리자 화면으로 이동한다")
+    fun rootRedirectsToAdminHome() {
+        val response = request(HttpMethod.GET, "/")
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.FOUND)
+        assertThat(response.headers.location.toString()).endsWith("/admin")
+    }
+
+    @Test
     @DisplayName("미인증 관리자는 관리자 로그인 화면으로 이동한다")
     fun unauthenticatedAdminPageRedirectsToLogin() {
         val response = request(HttpMethod.GET, "/admin")

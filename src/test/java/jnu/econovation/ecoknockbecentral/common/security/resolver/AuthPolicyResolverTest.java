@@ -15,6 +15,7 @@ class AuthPolicyResolverTest {
         assertThat(resolve(HttpMethod.POST, "/auth/logout")).isEqualTo(AuthPolicy.SKIP);
         assertThat(resolve(HttpMethod.GET, "/sso/callback")).isEqualTo(AuthPolicy.SKIP);
         assertThat(resolve(HttpMethod.POST, "/sso/passport")).isEqualTo(AuthPolicy.SKIP);
+        assertThat(resolve(HttpMethod.GET, "/")).isEqualTo(AuthPolicy.SKIP);
         assertThat(resolve(HttpMethod.GET, "/admin/login")).isEqualTo(AuthPolicy.SKIP);
         assertThat(resolve(HttpMethod.GET, "/scalar")).isEqualTo(AuthPolicy.SKIP);
     }
