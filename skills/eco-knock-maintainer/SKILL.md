@@ -27,6 +27,10 @@ Use this skill when working on application code in `eco-knock-be-central`.
 - Preserve user or unrelated worktree changes. Never revert unrelated dirty files.
 - When adding an HTTP endpoint or changing an endpoint's authorization policy, ask the user whether `GUEST` should be added to the explicit guest allowlist. Do not add it unless the user explicitly approves.
 
+## Skill Maintenance
+
+- When the user points out a code-style or implementation problem during a task, fix it first. Then ask the user whether to add it as a rule to this skill (and to `$eco-knock-style-verifier` when the verifier should catch it). Do not edit the skill without the user's approval.
+
 ## Package Style
 
 General domains use simple layered packages:
